@@ -1,0 +1,90 @@
+# Dependencies
+node_modules
+.pnpm-store
+.pnp
+.pnp.js
+
+# Build artifacts
+dist
+build
+out
+
+# Testing
+coverage
+.nx/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!dap-workspace/tools/local-deployments/workflow-engine/.env
+!dap-workspace/tools/local-deployments/workflow-engine/.env.migrate
+!dap-workspace/tools/local-deployments/workflow-engine/.env.remote_git
+!dap-workspace/tools/local-deployments/shared-infra/.env
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Go specific
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+go.work.sum
+
+# Database
+*.db
+*.sqlite
+
+# Docker volumes
+postgres-data/
+
+# Python specific
+__pycache__/
+.ruff_cache/
+.mypy_cache/
+
+# Unit test / coverage reports (Python specific)
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+reports
+
+# Environments (Python specific)
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
