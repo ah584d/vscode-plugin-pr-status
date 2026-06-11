@@ -2,7 +2,7 @@
   "name": "pr-status-monitor",
   "displayName": "PR Status Monitor",
   "description": "Displays open PR count and status.",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "_update_version_as_well_in_READ_ME": "0.0.8",
   "license": "MIT",
   "publisher": "ah584d",
