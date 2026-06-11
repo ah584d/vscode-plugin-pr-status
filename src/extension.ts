@@ -65,7 +65,9 @@ async function updatePRStatus(octokit: any) {
   for (const activeRepo of repos) {
     const remotes = activeRepo.state.remotes || [];
     for (const remote of remotes) {
-        if (!remote.fetchUrl) continue;
+        if (!remote.fetchUrl) {
+          continue;
+        }
         const match = remote.fetchUrl.match(/github\.com[:/](.+)\/(.+?)(\.git)?$/);
         if (match) {
             uniqueRepoIds.add(`${match[1]}/${match[2]}`);
