@@ -3,6 +3,7 @@
   "displayName": "PR Status Monitor",
   "description": "Displays open PR count and status.",
   "version": "0.0.2",
+  "license": "MIT",
   "publisher": "ah584d",
   "author": {
     "name": "Avraham Hamu",
@@ -39,7 +40,7 @@
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
     "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
-    "package:local": "pnpm dlx @vscode/vsce package --no-dependencies",
+    "build": "pnpm dlx @vscode/vsce package --no-dependencies",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
