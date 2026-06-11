@@ -21,13 +21,32 @@
 Once installed, the PR Status Monitor automatically activates on startup.
 It seamlessly authenticates with your built-in VS Code GitHub account. You'll see an icon appearing in the lower-left corner of your status bar indicating:
 
-`[Git Icon] 3 PRs | 🟢1 🔴1 🟠1`
+`3 PRs | 🟢1 🔴1 🟠1`
 
 _(Example: 3 Open PRs total. 1 Passing, 1 Failed, 1 Pending)._
 
-**Note:** The extension queries GitHub securely and pulls updates automatically every **2 minutes**.
+**Note:** The extension queries GitHub securely and pulls updates automatically every **2 minutes** by default.
 
-## ⚙️ Requirements
+## ⚙️ Configuration
+
+You can customize the polling interval in VS Code settings:
+
+- **`prStatusMonitor.pollingInterval`** _(number, default: `2`)_
+  How often to check PR status, in minutes. Minimum: 1, Maximum: 60.
+
+  To change it:
+  1. Open Settings (`Cmd+,` or `Ctrl+,`)
+  2. Search for "PR Status Monitor"
+  3. Adjust the "Polling Interval" value
+
+  Or add to your `settings.json`:
+  ```json
+  {
+    "prStatusMonitor.pollingInterval": 5
+  }
+  ```
+
+## 📋 Requirements
 
 - VS Code version `^1.103.0`
 - You must be signed in to GitHub within VS Code.

@@ -2,7 +2,7 @@
   "name": "pr-status-monitor",
   "displayName": "PR Status Monitor",
   "description": "Displays open PR count and status.",
-  "version": "0.0.2",
+  "version": "0.0.0-beta1",
   "license": "MIT",
   "publisher": "ah584d",
   "author": {
@@ -31,7 +31,19 @@
         "command": "pr-status-monitor.openPrInBrowser",
         "title": "Open PR in Browser"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "PR Status Monitor",
+      "properties": {
+        "prStatusMonitor.pollingInterval": {
+          "type": "number",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "How often to check PR status (in minutes)"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
