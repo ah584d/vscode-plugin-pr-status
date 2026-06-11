@@ -47,7 +47,7 @@
     "lint": "eslint src",
     "test": "vscode-test",
     "publish:login": "pnpm dlx @vscode/vsce login ah584d",
-    "publish": "pnpm dlx @vscode/vsce publish patch"
+    "publish": "pnpm dlx @vscode/vsce publish --no-dependencies"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
