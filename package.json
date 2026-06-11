@@ -2,7 +2,7 @@
   "name": "pr-status-monitor",
   "displayName": "PR Status Monitor",
   "description": "Displays open PR count and status.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "ah584d",
   "author": {
     "name": "Avraham Hamu",
