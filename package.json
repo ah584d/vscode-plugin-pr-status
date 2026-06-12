@@ -20,7 +20,7 @@
     "vscode": "^1.103.0"
   },
   "categories": [
-    "Other"
+    "SCM Providers"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -59,7 +59,7 @@
     "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test",
+    "test": "pnpm compile-tests && vscode-test",
     "publish:login": "pnpm dlx @vscode/vsce login ah584d",
     "publish": "pnpm dlx @vscode/vsce publish --no-dependencies"
   },

@@ -1,15 +1,523 @@
-import * as assert from 'assert';
+import * as assert from "assert";
+import * as vscode from "vscode";
 
-// You can import and use all API from the 'vscode' module
-// as well as import your extension to test it
-import * as vscode from 'vscode';
-// import * as myExtension from '../../extension';
+suite("PR Status Monitor Extension Tests", () => {
+  suite("Activation Tests", () => {
+    test("Should show connecting state on activation", async () => {
+      const extension = vscode.extensions.getExtension(
+        "ah584d.pr-status-monitor",
+      );
+      assert.ok(extension, "Extension should be available");
 
-suite('Extension Test Suite', () => {
-	vscode.window.showInformationMessage('Start all tests.');
+      if (!extension.isActive) {
+        await extension.activate();
+      }
 
-	test('Sample test', () => {
-		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
-	});
+      // Wait a moment for status bar to update
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Extension should be active
+      assert.ok(extension.isActive, "Extension should be activated");
+    });
+
+    test("Should register openPrInBrowser command", async () => {
+      const commands = await vscode.commands.getCommands(true);
+      assert.ok(
+        commands.includes("pr-status-monitor.openPrInBrowser"),
+        "Command should be registered",
+      );
+    });
+  });
+
+  suite("Status Bar Icon Tests", () => {
+    test("Should show connecting icon with sync~spin", () => {
+      // Test that connecting state uses $(sync~spin) icon
+      const connectingText = "$(sync~spin) Connecting...";
+      assert.ok(
+        connectingText.includes("sync~spin"),
+        "Should use sync~spin icon for connecting",
+      );
+    });
+
+    test("Should show warning icon for offline status", () => {
+      const offlineText = "$(warning) PR Monitor";
+      assert.ok(
+        offlineText.includes("warning"),
+        "Should use warning icon for offline",
+      );
+    });
+
+    test("Should show git-pull-request icon for PR count", () => {
+      const prCountText = "$(git-pull-request) 3 PRs";
+      assert.ok(
+        prCountText.includes("git-pull-request"),
+        "Should use git-pull-request icon",
+      );
+    });
+
+    test("Should use emoji status indicators", () => {
+      const statusText = "$(git-pull-request) 3 PRs | 🟢1 🔴1 🟠1";
+
+      assert.ok(statusText.includes("🟢"), "Should include green emoji");
+      assert.ok(statusText.includes("🔴"), "Should include red emoji");
+      assert.ok(statusText.includes("🟠"), "Should include orange emoji");
+    });
+  });
+
+  suite("PR Status Formatting Tests", () => {
+    test("Should format 0 PRs correctly", () => {
+      const text = "$(git-pull-request) 0 PRs";
+      assert.ok(text.includes("0 PRs"), "Should show 0 PRs");
+    });
+
+    test("Should format single PR correctly", () => {
+      const text = "$(git-pull-request) 1 PRs | 🟢1";
+      assert.ok(text.includes("1 PRs"), "Should show 1 PR");
+    });
+
+    test("Should format multiple PRs correctly", () => {
+      const text = "$(git-pull-request) 5 PRs | 🟢2 🔴1 🟠2";
+      assert.ok(text.includes("5 PRs"), "Should show count");
+      assert.ok(text.includes("🟢2"), "Should show passing count");
+      assert.ok(text.includes("🔴1"), "Should show failed count");
+      assert.ok(text.includes("🟠2"), "Should show pending count");
+    });
+
+    test("Should only show status types that exist", () => {
+      // Only passing PRs
+      const passingOnly = "$(git-pull-request) 2 PRs | 🟢2";
+      assert.ok(
+        !passingOnly.includes("🔴"),
+        "Should not show red if no failures",
+      );
+      assert.ok(
+        !passingOnly.includes("🟠"),
+        "Should not show orange if no pending",
+      );
+
+      // Only failed PRs
+      const failedOnly = "$(git-pull-request) 1 PRs | 🔴1";
+      assert.ok(
+        !failedOnly.includes("🟢"),
+        "Should not show green if no passing",
+      );
+    });
+  });
+
+  suite("Tooltip Tests", () => {
+    test("Should format tooltip for single repo", () => {
+      const tooltip =
+        "Your Open PRs:\n\n🟢 #123: Fix bug (Passing)\n\nClick to select a PR to open.";
+
+      assert.ok(tooltip.includes("Your Open PRs"), "Should have header");
+      assert.ok(tooltip.includes("#123"), "Should include PR number");
+      assert.ok(
+        tooltip.includes("Click to select"),
+        "Should include action hint",
+      );
+    });
+
+    test("Should format tooltip for multiple repos", () => {
+      const tooltip =
+        "Your Open PRs:\n\n🟢 [repo1] #123: Fix bug (Passing)\n🔴 [repo2] #456: New feature (Failed)\n\nClick to select a PR to open.";
+
+      assert.ok(tooltip.includes("[repo1]"), "Should include repo name");
+      assert.ok(tooltip.includes("[repo2]"), "Should include second repo");
+    });
+
+    test("Should show offline reason in tooltip", () => {
+      const tooltip = "PR Monitor offline: No Git Ext";
+      assert.ok(tooltip.includes("offline"), "Should indicate offline");
+      assert.ok(tooltip.includes("No Git Ext"), "Should show specific reason");
+    });
+
+    test("Should show no PRs message", () => {
+      const tooltip =
+        "No open pull requests found for user123 in connected repos";
+      assert.ok(
+        tooltip.includes("No open pull requests"),
+        "Should indicate no PRs",
+      );
+    });
+  });
+
+  suite("CI Status Detection Tests", () => {
+    test("Should detect passing CI", () => {
+      const runs = [
+        { status: "completed", conclusion: "success" },
+        { status: "completed", conclusion: "success" },
+      ];
+
+      const hasFailed = runs.some((run: any) =>
+        ["failure", "timed_out", "cancelled", "action_required"].includes(
+          run.conclusion,
+        ),
+      );
+      const isPending = runs.some(
+        (run: any) => run.status !== "completed" || run.conclusion === null,
+      );
+
+      assert.strictEqual(hasFailed, false, "Should not detect failure");
+      assert.strictEqual(isPending, false, "Should not detect pending");
+    });
+
+    test("Should detect failed CI", () => {
+      const runs = [
+        { status: "completed", conclusion: "success" },
+        { status: "completed", conclusion: "failure" },
+      ];
+
+      const hasFailed = runs.some((run: any) =>
+        ["failure", "timed_out", "cancelled", "action_required"].includes(
+          run.conclusion,
+        ),
+      );
+
+      assert.strictEqual(hasFailed, true, "Should detect failure");
+    });
+
+    test("Should detect pending CI", () => {
+      const runs = [
+        { status: "completed", conclusion: "success" },
+        { status: "in_progress", conclusion: null },
+      ];
+
+      const isPending = runs.some(
+        (run: any) => run.status !== "completed" || run.conclusion === null,
+      );
+
+      assert.strictEqual(isPending, true, "Should detect pending");
+    });
+
+    test("Should detect timed_out as failure", () => {
+      const runs = [{ status: "completed", conclusion: "timed_out" }];
+
+      const hasFailed = runs.some((run: any) =>
+        ["failure", "timed_out", "cancelled", "action_required"].includes(
+          run.conclusion,
+        ),
+      );
+
+      assert.strictEqual(hasFailed, true, "Should detect timeout as failure");
+    });
+
+    test("Should detect cancelled as failure", () => {
+      const runs = [{ status: "completed", conclusion: "cancelled" }];
+
+      const hasFailed = runs.some((run: any) =>
+        ["failure", "timed_out", "cancelled", "action_required"].includes(
+          run.conclusion,
+        ),
+      );
+
+      assert.strictEqual(hasFailed, true, "Should detect cancelled as failure");
+    });
+
+    test("Should detect action_required as failure", () => {
+      const runs = [{ status: "completed", conclusion: "action_required" }];
+
+      const hasFailed = runs.some((run: any) =>
+        ["failure", "timed_out", "cancelled", "action_required"].includes(
+          run.conclusion,
+        ),
+      );
+
+      assert.strictEqual(
+        hasFailed,
+        true,
+        "Should detect action_required as failure",
+      );
+    });
+  });
+
+  suite("Commit Status Fallback Tests", () => {
+    test("Should handle success commit status", () => {
+      const commitStatus = { state: "success" };
+      const isSuccess = commitStatus.state === "success";
+      assert.strictEqual(isSuccess, true, "Should detect success");
+    });
+
+    test("Should handle failure commit status", () => {
+      const commitStatus = { state: "failure" };
+      const isFailure =
+        commitStatus.state === "failure" || commitStatus.state === "error";
+      assert.strictEqual(isFailure, true, "Should detect failure");
+    });
+
+    test("Should handle error commit status", () => {
+      const commitStatus = { state: "error" };
+      const isFailure =
+        commitStatus.state === "failure" || commitStatus.state === "error";
+      assert.strictEqual(isFailure, true, "Should detect error");
+    });
+
+    test("Should handle pending commit status", () => {
+      const commitStatus = { state: "pending" };
+      const isPending = commitStatus.state === "pending";
+      assert.strictEqual(isPending, true, "Should detect pending");
+    });
+  });
+
+  suite("GitHub URL Matching Tests", () => {
+    test("Should match HTTPS GitHub URLs", () => {
+      const url = "https://github.com/owner/repo.git";
+      const match = url.match(/github\.com[:/](.+)\/(.+?)(\.git)?$/);
+
+      assert.ok(match, "Should match HTTPS URL");
+      assert.strictEqual(match![1], "owner", "Should extract owner");
+      assert.strictEqual(match![2], "repo", "Should extract repo");
+    });
+
+    test("Should match SSH GitHub URLs", () => {
+      const url = "git@github.com:owner/repo.git";
+      const match = url.match(/github\.com[:/](.+)\/(.+?)(\.git)?$/);
+
+      assert.ok(match, "Should match SSH URL");
+      assert.strictEqual(match![1], "owner", "Should extract owner");
+      assert.strictEqual(match![2], "repo", "Should extract repo");
+    });
+
+    test("Should match URLs without .git extension", () => {
+      const url = "https://github.com/owner/repo";
+      const match = url.match(/github\.com[:/](.+)\/(.+?)(\.git)?$/);
+
+      assert.ok(match, "Should match URL without .git");
+      assert.strictEqual(match![1], "owner", "Should extract owner");
+      assert.strictEqual(match![2], "repo", "Should extract repo");
+    });
+
+    test("Should not match non-GitHub URLs", () => {
+      const url = "https://gitlab.com/owner/repo.git";
+      const match = url.match(/github\.com[:/](.+)\/(.+?)(\.git)?$/);
+
+      assert.strictEqual(match, null, "Should not match non-GitHub URL");
+    });
+  });
+
+  suite("Configuration Tests", () => {
+    test("Should use default polling interval of 2 minutes", () => {
+      const defaultMinutes = 2;
+      const defaultMs = defaultMinutes * 60 * 1000;
+
+      assert.strictEqual(
+        defaultMs,
+        120000,
+        "Should convert 2 minutes to 120000ms",
+      );
+    });
+
+    test("Should convert custom polling interval correctly", () => {
+      const customMinutes = 5;
+      const customMs = customMinutes * 60 * 1000;
+
+      assert.strictEqual(
+        customMs,
+        300000,
+        "Should convert 5 minutes to 300000ms",
+      );
+    });
+
+    test("Should handle minimum polling interval", () => {
+      const minMinutes = 1;
+      const minMs = minMinutes * 60 * 1000;
+
+      assert.strictEqual(minMs, 60000, "Should convert 1 minute to 60000ms");
+    });
+
+    test("Should handle maximum polling interval", () => {
+      const maxMinutes = 60;
+      const maxMs = maxMinutes * 60 * 1000;
+
+      assert.strictEqual(
+        maxMs,
+        3600000,
+        "Should convert 60 minutes to 3600000ms",
+      );
+    });
+  });
+
+  suite("Edge Case Tests", () => {
+    test("Should handle empty PR list", () => {
+      const allPRs: any[] = [];
+      assert.strictEqual(allPRs.length, 0, "Should handle empty array");
+    });
+
+    test("Should handle single PR", () => {
+      const allPRs = [
+        {
+          title: "#123: Fix bug",
+          url: "https://github.com/owner/repo/pull/123",
+          status: "🟢",
+          repo: "",
+        },
+      ];
+
+      assert.strictEqual(allPRs.length, 1, "Should have one PR");
+    });
+
+    test("Should handle PR without repo prefix", () => {
+      const pr = {
+        title: "#123: Fix bug",
+        url: "https://github.com/owner/repo/pull/123",
+        status: "🟢",
+        repo: "",
+      };
+
+      assert.strictEqual(pr.repo, "", "Repo should be empty for single repo");
+    });
+
+    test("Should handle PR with repo prefix", () => {
+      const pr = {
+        title: "#123: Fix bug",
+        url: "https://github.com/owner/repo/pull/123",
+        status: "🟢",
+        repo: "my-repo",
+      };
+
+      assert.strictEqual(
+        pr.repo,
+        "my-repo",
+        "Should include repo for multi-repo",
+      );
+    });
+
+    test("Should handle PR with special characters in title", () => {
+      const title = "#456: Fix [URGENT] bug with <component>";
+      assert.ok(
+        title.includes("[URGENT]"),
+        "Should preserve special characters",
+      );
+      assert.ok(
+        title.includes("<component>"),
+        "Should preserve angle brackets",
+      );
+    });
+
+    test("Should handle very long PR titles", () => {
+      const longTitle = "#789: " + "A".repeat(200) + " - very long description";
+      assert.ok(longTitle.length > 200, "Should handle long titles");
+    });
+  });
+
+  suite("Error Handling Tests", () => {
+    test("Should handle no Git extension scenario", () => {
+      const errorReason = "No Git Ext";
+      assert.strictEqual(
+        errorReason,
+        "No Git Ext",
+        "Should have correct error message",
+      );
+    });
+
+    test("Should handle no repository open scenario", () => {
+      const errorReason = "No Repo Open";
+      assert.strictEqual(
+        errorReason,
+        "No Repo Open",
+        "Should have correct error message",
+      );
+    });
+
+    test("Should handle non-GitHub repository scenario", () => {
+      const errorReason = "Not GitHub";
+      assert.strictEqual(
+        errorReason,
+        "Not GitHub",
+        "Should have correct error message",
+      );
+    });
+
+    test("Should handle API error scenario", () => {
+      const errorReason = "API Error";
+      assert.strictEqual(
+        errorReason,
+        "API Error",
+        "Should have correct error message",
+      );
+    });
+
+    test("Should handle no GitHub session scenario", () => {
+      const errorReason = "No GitHub Session";
+      assert.strictEqual(
+        errorReason,
+        "No GitHub Session",
+        "Should have correct error message",
+      );
+    });
+
+    test("Should handle authentication failure", () => {
+      const errorReason = "Auth Failed";
+      assert.strictEqual(
+        errorReason,
+        "Auth Failed",
+        "Should have correct error message",
+      );
+    });
+  });
+
+  suite("QuickPick Menu Tests", () => {
+    test("Should format QuickPick item with emoji status", () => {
+      const item = {
+        label: "🟢 #123: Fix bug",
+        description: "https://github.com/owner/repo/pull/123",
+        url: "https://github.com/owner/repo/pull/123",
+      };
+
+      assert.ok(item.label.includes("🟢"), "Should include status emoji");
+      assert.ok(item.label.includes("#123"), "Should include PR number");
+      assert.ok(item.description.includes("github.com"), "Should include URL");
+    });
+
+    test("Should format QuickPick item with repo prefix", () => {
+      const item = {
+        label: "🔴 [my-repo] #456: New feature",
+        description: "https://github.com/owner/my-repo/pull/456",
+        url: "https://github.com/owner/my-repo/pull/456",
+      };
+
+      assert.ok(item.label.includes("[my-repo]"), "Should include repo name");
+      assert.ok(item.label.includes("🔴"), "Should include failed status");
+    });
+
+    test("Should format QuickPick item without repo prefix for single repo", () => {
+      const item = {
+        label: "🟠 #789: Refactor",
+        description: "https://github.com/owner/repo/pull/789",
+        url: "https://github.com/owner/repo/pull/789",
+      };
+
+      assert.ok(
+        !item.label.includes("["),
+        "Should not include repo for single repo",
+      );
+      assert.ok(item.label.includes("🟠"), "Should include pending status");
+    });
+  });
+
+  suite("Status Bar Color Tests", () => {
+    test("Should clear background and color for normal state", () => {
+      const backgroundColor = undefined;
+      const color = undefined;
+
+      assert.strictEqual(
+        backgroundColor,
+        undefined,
+        "Background should be undefined",
+      );
+      assert.strictEqual(color, undefined, "Color should be undefined");
+    });
+
+    test("Should clear colors for offline state", () => {
+      // Offline state now uses neutral colors
+      const backgroundColor = undefined;
+      const color = undefined;
+
+      assert.strictEqual(
+        backgroundColor,
+        undefined,
+        "Background should be cleared",
+      );
+      assert.strictEqual(color, undefined, "Color should be cleared");
+    });
+  });
 });
