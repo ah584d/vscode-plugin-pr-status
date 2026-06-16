@@ -1,13 +1,37 @@
 import * as vscode from "vscode";
+import {
+  PR,
+  OctokitInstance,
+  GitHubPullRequest,
+  PRCounts,
+  ProcessedPRResult,
+} from "./types";
+import {
+  extractGitHubRepoIds,
+  determineStatusFromChecks,
+  determineStatusFromCommitStatus,
+  buildStatusBarText,
+  buildTooltipLine,
+  buildTooltipText,
+  extractRepoInfo,
+  createPRKey,
+  getRepoPrefix,
+  buildGitHubSearchQuery,
+  buildQuickPickItems,
+  buildNotificationMessage,
+} from "./utils";
+
+const FAST_POLLING_MS = 10 * 1000; // 10 seconds for initial connection or reconnection
 
 let myStatusBarItem: vscode.StatusBarItem;
 let intervalId: NodeJS.Timeout;
-let allPRs: Array<{
-  title: string;
-  url: string;
-  status: string;
-  repo: string;
-}> = [];
+let allPRs: PR[] = [];
+
+// Track previous PR statuses to detect changes
+let previousPRStatuses: Map<string, string> = new Map();
+let isConnected = false;
+let octokitInstance: OctokitInstance | null = null;
+let normalPollingMs = 120000; // Default 2 minutes
 
 export async function activate(context: vscode.ExtensionContext) {
   // 1. Create the status bar item
@@ -38,11 +62,7 @@ export async function activate(context: vscode.ExtensionContext) {
       }
 
       // Show QuickPick menu for multiple PRs
-      const items = allPRs.map((pr) => ({
-        label: `${pr.status} ${pr.repo ? `[${pr.repo}] ` : ""}${pr.title}`,
-        description: pr.url,
-        url: pr.url,
-      }));
+      const items = buildQuickPickItems(allPRs);
 
       const selected = await vscode.window.showQuickPick(items, {
         placeHolder: "Select a PR to open in browser",
@@ -64,15 +84,22 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     if (session) {
-      const octokit = new Octokit({ auth: session.accessToken });
-      await updatePRStatus(octokit);
+      octokitInstance = new Octokit({
+        auth: session.accessToken,
+      }) as OctokitInstance;
 
       // Get polling interval from settings (in minutes, default 2)
       const config = vscode.workspace.getConfiguration("prStatusMonitor");
       const pollingMinutes = config.get<number>("pollingInterval", 2);
-      const pollingMs = pollingMinutes * 60 * 1000;
-      
-      intervalId = setInterval(() => updatePRStatus(octokit), pollingMs);
+      normalPollingMs = pollingMinutes * 60 * 1000;
+
+      // Start connection attempts
+      await attemptConnection();
+
+      // If not connected yet, keep trying every 10 seconds
+      if (!isConnected) {
+        intervalId = setInterval(attemptConnection, FAST_POLLING_MS);
+      }
     } else {
       setOfflineStatus("No GitHub Session");
     }
@@ -84,184 +111,273 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 }
 
-async function updatePRStatus(octokit: any) {
+async function attemptConnection() {
+  if (!octokitInstance) {
+    return;
+  }
+
+  const wasConnected = isConnected;
+  const connected = await updatePRStatus(octokitInstance, !isConnected);
+
+  if (connected && !wasConnected) {
+    // Just connected! Switch to normal polling interval
+    isConnected = true;
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+    intervalId = setInterval(attemptConnection, normalPollingMs);
+  } else if (!connected && wasConnected) {
+    // Lost connection! Switch back to fast polling to reconnect quickly
+    isConnected = false;
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+    intervalId = setInterval(attemptConnection, FAST_POLLING_MS);
+  }
+}
+
+/**
+ * Check for PR status changes and show notifications
+ */
+function notifyStatusChange(
+  previousStatus: string | undefined,
+  currentStatus: string,
+  prNumber: number,
+  repoPrefix: string,
+  prUrl: string,
+) {
+  if (previousStatus === "🟠") {
+    if (currentStatus === "🟢") {
+      const message = buildNotificationMessage("success", repoPrefix, prNumber);
+      vscode.window
+        .showInformationMessage(message, "View PR")
+        .then((selection) => {
+          if (selection === "View PR") {
+            vscode.env.openExternal(vscode.Uri.parse(prUrl));
+          }
+        });
+    } else if (currentStatus === "🔴") {
+      const message = buildNotificationMessage("failure", repoPrefix, prNumber);
+      vscode.window.showWarningMessage(message, "View PR").then((selection) => {
+        if (selection === "View PR") {
+          vscode.env.openExternal(vscode.Uri.parse(prUrl));
+        }
+      });
+    }
+  }
+}
+
+/**
+ * Fetch PR status from GitHub checks and commit statuses
+ */
+async function fetchPRStatus(
+  octokit: OctokitInstance,
+  owner: string,
+  repo: string,
+  headSha: string,
+): Promise<{ dot: string; statusText: string }> {
+  // Check GitHub actions / checks
+  const { data: statusData } = await octokit.rest.checks.listForRef({
+    owner,
+    repo,
+    ref: headSha,
+  });
+
+  const runs = statusData.check_runs;
+
+  if (runs.length > 0) {
+    return determineStatusFromChecks(runs);
+  }
+
+  // Fallback to commit statuses
+  const { data: commitStatus } =
+    await octokit.rest.repos.getCombinedStatusForRef({
+      owner,
+      repo,
+      ref: headSha,
+    });
+
+  return determineStatusFromCommitStatus(commitStatus.state);
+}
+
+/**
+ * Process a single PR and update counts
+ */
+async function processPR(
+  octokit: OctokitInstance,
+  pr: GitHubPullRequest,
+  hasMultipleRepos: boolean,
+  counts: PRCounts,
+): Promise<ProcessedPRResult> {
+  const { owner, repo } = extractRepoInfo(pr.repository_url);
+
+  // Fetch the PR to get the head sha
+  const { data: prData } = await octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: pr.number,
+  });
+
+  // Get PR status
+  const { dot, statusText } = await fetchPRStatus(
+    octokit,
+    owner,
+    repo,
+    prData.head.sha,
+  );
+
+  // Update counts
+  if (dot === "🟢") {
+    counts.success++;
+  } else if (dot === "🔴") {
+    counts.failure++;
+  } else if (dot === "🟠") {
+    counts.pending++;
+  }
+
+  const repoPrefix = getRepoPrefix(repo, hasMultipleRepos);
+
+  return { prData, owner, repo, dot, statusText, repoPrefix };
+}
+
+/**
+ * Fetch and display all PR statuses
+ */
+async function fetchAndDisplayPRs(
+  octokit: OctokitInstance,
+  uniqueRepoIds: Set<string>,
+  username: string,
+): Promise<boolean> {
+  const searchQuery = buildGitHubSearchQuery(uniqueRepoIds, username);
+
+  const { data: searchData } = await octokit.rest.search.issuesAndPullRequests({
+    q: searchQuery,
+    per_page: 50,
+  });
+
+  const allMyPrs = searchData.items;
+  const totalPRs = allMyPrs.length;
+
+  if (totalPRs === 0) {
+    displayNoPRs(username);
+    return true;
+  }
+
+  const counts = { success: 0, failure: 0, pending: 0 };
+  const tooltipLines: string[] = [];
+  allPRs = [];
+
+  const hasMultipleRepos = uniqueRepoIds.size > 1;
+
+  for (const pr of allMyPrs) {
+    const { prData, owner, repo, dot, statusText, repoPrefix } =
+      await processPR(octokit, pr, hasMultipleRepos, counts);
+
+    // Build tooltip line
+    tooltipLines.push(
+      buildTooltipLine(dot, repoPrefix, pr.number, pr.title, statusText),
+    );
+
+    // Store PR info for QuickPick menu
+    allPRs.push({
+      title: `#${pr.number}: ${pr.title}`,
+      url: pr.html_url,
+      status: dot,
+      repo: hasMultipleRepos ? repo : "",
+    });
+
+    // Check for status changes and notify
+    const prKey = createPRKey(owner, repo, pr.number);
+    const previousStatus = previousPRStatuses.get(prKey);
+
+    notifyStatusChange(previousStatus, dot, pr.number, repoPrefix, pr.html_url);
+
+    // Update the status tracker
+    previousPRStatuses.set(prKey, dot);
+  }
+
+  // Update status bar
+  updateStatusBar(totalPRs, counts, tooltipLines);
+  return true;
+}
+
+/**
+ * Display status bar when no PRs are found
+ */
+function displayNoPRs(username: string) {
+  allPRs = [];
+  myStatusBarItem.text = `\$(git-pull-request) 0 PRs`;
+  myStatusBarItem.tooltip = `No open pull requests found for ${username} in connected repos`;
+  myStatusBarItem.backgroundColor = undefined;
+  myStatusBarItem.color = undefined;
+  myStatusBarItem.show();
+}
+
+/**
+ * Update the status bar with PR information
+ */
+function updateStatusBar(
+  totalPRs: number,
+  counts: PRCounts,
+  tooltipLines: string[],
+) {
+  const statusString = buildStatusBarText(
+    totalPRs,
+    counts.success,
+    counts.failure,
+    counts.pending,
+  );
+
+  myStatusBarItem.text = statusString;
+  myStatusBarItem.tooltip = buildTooltipText(tooltipLines);
+  myStatusBarItem.backgroundColor = undefined;
+  myStatusBarItem.color = undefined;
+  myStatusBarItem.show();
+}
+
+/**
+ * Main function to update PR status
+ */
+async function updatePRStatus(
+  octokit: OctokitInstance,
+  isInitialConnection = false,
+): Promise<boolean> {
   const gitExtension = vscode.extensions.getExtension("vscode.git")?.exports;
   if (!gitExtension) {
-    setOfflineStatus("No Git Ext");
-    return;
+    if (!isInitialConnection) {
+      setOfflineStatus("No Git Ext");
+    }
+    return false;
   }
 
   const api = gitExtension.getAPI(1);
   const repos = api.repositories;
   if (!repos || repos.length === 0) {
-    setOfflineStatus("No Repo Open");
-    return;
+    if (!isInitialConnection) {
+      setOfflineStatus("No Repo Open");
+    }
+    return false;
   }
 
-  // Support worktrees & forks: collect all remotes across all opened git repositories
-  let uniqueRepoIds = new Set<string>();
-  for (const activeRepo of repos) {
-    const remotes = activeRepo.state.remotes || [];
-    for (const remote of remotes) {
-      if (!remote.fetchUrl) {
-        continue;
-      }
-      const match = remote.fetchUrl.match(
-        /github\.com[:/](.+)\/(.+?)(\.git)?$/,
-      );
-      if (match) {
-        uniqueRepoIds.add(`${match[1]}/${match[2]}`);
-      }
-    }
-  }
+  // Extract GitHub repository IDs from remotes
+  const uniqueRepoIds = extractGitHubRepoIds(repos);
 
   if (uniqueRepoIds.size === 0) {
-    setOfflineStatus("Not GitHub");
-    return;
+    if (!isInitialConnection) {
+      setOfflineStatus("Not GitHub");
+    }
+    return false;
   }
 
   try {
     const { data: user } = await octokit.rest.users.getAuthenticated();
-
-    // Use GitHub Search API to find ALL your open PRs across ANY of these remotes
-    // This handles forks -> upstream, and multiple worktrees perfectly
-    const repoQueries = Array.from(uniqueRepoIds)
-      .map((id) => `repo:${id}`)
-      .join(" ");
-    const searchQuery = `is:pr is:open author:${user.login} ${repoQueries}`;
-
-    const { data: searchData } =
-      await octokit.rest.search.issuesAndPullRequests({
-        q: searchQuery,
-        per_page: 50,
-      });
-
-    const allMyPrs = searchData.items;
-    const totalPRs = allMyPrs.length;
-
-    if (totalPRs === 0) {
-      allPRs = [];
-      myStatusBarItem.text = `\$(git-pull-request) 0 PRs`;
-      myStatusBarItem.tooltip = `No open pull requests found for ${user.login} in connected repos`;
-      myStatusBarItem.backgroundColor = undefined;
-      myStatusBarItem.color = undefined;
-      myStatusBarItem.show();
-      return;
-    }
-
-    let successCount = 0;
-    let failureCount = 0;
-    let pendingCount = 0;
-    let tooltipLines: string[] = [];
-    allPRs = []; // Reset the PRs array
-
-    // Loop through ALL your open PRs and fetch their CI status
-    for (const pr of allMyPrs) {
-      const repoUrlMatch = pr.repository_url.match(/repos\/(.+)\/(.+)$/);
-      const prOwner = repoUrlMatch ? repoUrlMatch[1] : "";
-      const prRepo = repoUrlMatch ? repoUrlMatch[2] : "";
-
-      // We need to fetch the PR first to get the head sha
-      const { data: prData } = await octokit.rest.pulls.get({
-        owner: prOwner,
-        repo: prRepo,
-        pull_number: pr.number,
-      });
-
-      // Check GitHub actions / checks
-      const { data: statusData } = await octokit.rest.checks.listForRef({
-        owner: prOwner,
-        repo: prRepo,
-        ref: prData.head.sha,
-      });
-
-      const runs = statusData.check_runs;
-      let prDot = "⚪";
-      let prStatusText = "No CI";
-
-      if (runs.length > 0) {
-        const hasFailed = runs.some((run: any) =>
-          ["failure", "timed_out", "cancelled", "action_required"].includes(
-            run.conclusion,
-          ),
-        );
-        const isPending = runs.some(
-          (run: any) => run.status !== "completed" || run.conclusion === null,
-        );
-
-        if (hasFailed) {
-          prDot = "🔴";
-          prStatusText = "Failed";
-          failureCount++;
-        } else if (isPending) {
-          prDot = "🟠";
-          prStatusText = "Pending";
-          pendingCount++;
-        } else {
-          prDot = "🟢";
-          prStatusText = "Passing";
-          successCount++;
-        }
-      } else {
-        // fallback to commit statuses
-        const { data: commitStatus } =
-          await octokit.rest.repos.getCombinedStatusForRef({
-            owner: prOwner,
-            repo: prRepo,
-            ref: prData.head.sha,
-          });
-
-        if (commitStatus.state === "success") {
-          prDot = "🟢";
-          prStatusText = "Passing";
-          successCount++;
-        } else if (
-          commitStatus.state === "failure" ||
-          commitStatus.state === "error"
-        ) {
-          prDot = "🔴";
-          prStatusText = "Failed";
-          failureCount++;
-        } else if (commitStatus.state === "pending") {
-          prDot = "🟠";
-          prStatusText = "Pending";
-          pendingCount++;
-        }
-      }
-
-      const repoPrefix = uniqueRepoIds.size > 1 ? `[${prRepo}] ` : "";
-      tooltipLines.push(
-        `${prDot} ${repoPrefix}#${pr.number}: ${pr.title} (${prStatusText})`,
-      );
-
-      // Store PR info for QuickPick menu
-      allPRs.push({
-        title: `#${pr.number}: ${pr.title}`,
-        url: pr.html_url,
-        status: prDot,
-        repo: uniqueRepoIds.size > 1 ? prRepo : "",
-      });
-    }
-
-    let statusString = `\$(git-pull-request) ${totalPRs} PRs |`;
-    if (successCount > 0) {
-      statusString += ` 🟢${successCount}`;
-    }
-    if (failureCount > 0) {
-      statusString += ` 🔴${failureCount}`;
-    }
-    if (pendingCount > 0) {
-      statusString += ` 🟠${pendingCount}`;
-    }
-
-    myStatusBarItem.text = statusString;
-    myStatusBarItem.tooltip = `Your Open PRs:\n\n${tooltipLines.join("\n")}\n\nClick to select a PR to open.`;
-    myStatusBarItem.backgroundColor = undefined;
-    myStatusBarItem.color = undefined;
-    myStatusBarItem.show();
+    return await fetchAndDisplayPRs(octokit, uniqueRepoIds, user.login);
   } catch (error) {
     console.error("PR Monitor Error: ", error);
-    setOfflineStatus("API Error");
+    if (!isInitialConnection) {
+      setOfflineStatus("API Error");
+    }
+    return false;
   }
 }
 

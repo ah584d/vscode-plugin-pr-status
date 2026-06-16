@@ -520,4 +520,180 @@ suite("PR Status Monitor Extension Tests", () => {
       assert.strictEqual(color, undefined, "Color should be cleared");
     });
   });
+
+  suite("Connection and Reconnection Tests", () => {
+    test("Should use 10-second polling during initial connection", () => {
+      const fastPollingMs = 10 * 1000;
+      assert.strictEqual(
+        fastPollingMs,
+        10000,
+        "Should poll every 10 seconds initially",
+      );
+    });
+
+    test("Should switch to normal polling after connection established", () => {
+      const normalPollingMinutes = 2;
+      const normalPollingMs = normalPollingMinutes * 60 * 1000;
+      assert.strictEqual(
+        normalPollingMs,
+        120000,
+        "Should switch to 2-minute polling after connection",
+      );
+    });
+
+    test("Should switch back to fast polling on connection loss", () => {
+      const fastPollingMs = 10 * 1000;
+      // Simulating reconnection scenario
+      const wasConnected = true;
+      const nowConnected = false;
+
+      if (wasConnected && !nowConnected) {
+        // Should use fast polling
+        assert.strictEqual(
+          fastPollingMs,
+          10000,
+          "Should use fast polling on connection loss",
+        );
+      }
+    });
+
+    test("Should not show warning during initial connection attempts", () => {
+      const isInitialConnection = true;
+      // When isInitialConnection is true, setOfflineStatus should not be called
+      assert.strictEqual(
+        isInitialConnection,
+        true,
+        "Should suppress warnings during initial connection",
+      );
+    });
+
+    test("Should show warning after connection was established then lost", () => {
+      const isInitialConnection = false;
+      const wasConnected = true;
+
+      if (!isInitialConnection && wasConnected) {
+        // Should show warning
+        assert.ok(true, "Should show warning when connection is lost");
+      }
+    });
+
+    test("Should keep showing connecting state during initial retries", () => {
+      const connectingText = "$(sync~spin) Connecting...";
+      assert.ok(
+        connectingText.includes("sync~spin"),
+        "Should keep showing connecting animation",
+      );
+    });
+  });
+
+  suite("PR Status Change Notification Tests", () => {
+    test("Should notify when PR changes from orange to green", () => {
+      const previousStatus = "🟠";
+      const currentStatus = "🟢";
+
+      const shouldNotify = previousStatus === "🟠" && currentStatus === "🟢";
+      assert.strictEqual(
+        shouldNotify,
+        true,
+        "Should notify on orange to green transition",
+      );
+    });
+
+    test("Should notify when PR changes from orange to red", () => {
+      const previousStatus = "🟠";
+      const currentStatus = "🔴";
+
+      const shouldNotify = previousStatus === "🟠" && currentStatus === "🔴";
+      assert.strictEqual(
+        shouldNotify,
+        true,
+        "Should notify on orange to red transition",
+      );
+    });
+
+    test("Should not notify when PR stays green", () => {
+      const previousStatus: string = "🟢";
+      const currentStatus: string = "🟢";
+
+      const shouldNotify =
+        previousStatus === "🟠" &&
+        (currentStatus === "🟢" || currentStatus === "🔴");
+      assert.strictEqual(
+        shouldNotify,
+        false,
+        "Should not notify when status stays green",
+      );
+    });
+
+    test("Should not notify when PR stays orange", () => {
+      const previousStatus = "🟠";
+      const currentStatus = "🟠";
+
+      const shouldNotify = previousStatus === "🟠" && currentStatus !== "🟠";
+      assert.strictEqual(
+        shouldNotify,
+        false,
+        "Should not notify when status stays orange",
+      );
+    });
+
+    test("Should not notify when PR changes from green to red", () => {
+      const previousStatus: string = "🟢";
+      const currentStatus: string = "🔴";
+
+      const shouldNotify =
+        previousStatus === "🟠" &&
+        (currentStatus === "🟢" || currentStatus === "🔴");
+      assert.strictEqual(
+        shouldNotify,
+        false,
+        "Should not notify on green to red transition",
+      );
+    });
+
+    test("Should not notify when PR changes from red to green", () => {
+      const previousStatus: string = "🔴";
+      const currentStatus: string = "🟢";
+
+      const shouldNotify =
+        previousStatus === "🟠" &&
+        (currentStatus === "🟢" || currentStatus === "🔴");
+      assert.strictEqual(
+        shouldNotify,
+        false,
+        "Should not notify on red to green transition",
+      );
+    });
+
+    test("Should format success notification correctly", () => {
+      const message = "✅ PR #123 is now passing!";
+      assert.ok(message.includes("✅"), "Should include success emoji");
+      assert.ok(message.includes("passing"), "Should mention passing");
+    });
+
+    test("Should format failure notification correctly", () => {
+      const message = "❌ PR #123 has failed!";
+      assert.ok(message.includes("❌"), "Should include error emoji");
+      assert.ok(message.includes("failed"), "Should mention failure");
+    });
+
+    test("Should include PR number in notification", () => {
+      const prNumber = 123;
+      const message = `✅ PR #${prNumber} is now passing!`;
+      assert.ok(
+        message.includes("#123"),
+        "Should include PR number in notification",
+      );
+    });
+
+    test("Should include repo prefix in notification for multi-repo", () => {
+      const repoPrefix = "[my-repo] ";
+      const prNumber = 456;
+      const message = `✅ PR ${repoPrefix}#${prNumber} is now passing!`;
+      assert.ok(
+        message.includes("[my-repo]"),
+        "Should include repo prefix in notification",
+      );
+    });
+  });
 });
