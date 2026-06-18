@@ -1,5 +1,6 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
+import { determineStatusFromChecks } from "../../src/utils";
 
 suite("PR Status Monitor Extension Tests", () => {
   suite("Activation Tests", () => {
@@ -142,91 +143,100 @@ suite("PR Status Monitor Extension Tests", () => {
   });
 
   suite("CI Status Detection Tests", () => {
-    test("Should detect passing CI", () => {
-      const runs = [
-        { status: "completed", conclusion: "success" },
-        { status: "completed", conclusion: "success" },
-      ];
-
-      const hasFailed = runs.some((run: any) =>
-        ["failure", "timed_out", "cancelled", "action_required"].includes(
-          run.conclusion,
-        ),
-      );
-      const isPending = runs.some(
-        (run: any) => run.status !== "completed" || run.conclusion === null,
-      );
-
-      assert.strictEqual(hasFailed, false, "Should not detect failure");
-      assert.strictEqual(isPending, false, "Should not detect pending");
+    // Helper to build a check run from a GitHub Actions workflow
+    const ghRun = (conclusion: string | null, status = "completed") => ({
+      id: 1,
+      name: "build",
+      status,
+      conclusion,
+      app: { slug: "github-actions" },
     });
 
-    test("Should detect failed CI", () => {
-      const runs = [
-        { status: "completed", conclusion: "success" },
-        { status: "completed", conclusion: "failure" },
-      ];
-
-      const hasFailed = runs.some((run: any) =>
-        ["failure", "timed_out", "cancelled", "action_required"].includes(
-          run.conclusion,
-        ),
-      );
-
-      assert.strictEqual(hasFailed, true, "Should detect failure");
+    // Helper to build a check run from a non-CI app (e.g. a code-review gate)
+    const reviewRun = (conclusion: string | null, status = "completed") => ({
+      id: 2,
+      name: "code-review",
+      status,
+      conclusion,
+      app: { slug: "code-review-gate" },
     });
 
-    test("Should detect pending CI", () => {
-      const runs = [
-        { status: "completed", conclusion: "success" },
-        { status: "in_progress", conclusion: null },
-      ];
+    test("Should return passing when all GitHub Actions runs succeeded", () => {
+      const result = determineStatusFromChecks([ghRun("success"), ghRun("success")]);
+      assert.strictEqual(result.dot, "🟢");
+      assert.strictEqual(result.statusText, "Passing");
+    });
 
-      const isPending = runs.some(
-        (run: any) => run.status !== "completed" || run.conclusion === null,
-      );
+    test("Should return passing for success/skipped/neutral mix", () => {
+      const result = determineStatusFromChecks([ghRun("success"), ghRun("skipped"), ghRun("neutral")]);
+      assert.strictEqual(result.dot, "🟢");
+    });
 
-      assert.strictEqual(isPending, true, "Should detect pending");
+    test("Should ignore failing code-review check and return passing", () => {
+      const result = determineStatusFromChecks([ghRun("success"), reviewRun("failure")]);
+      assert.strictEqual(result.dot, "🟢", "Code-review failure must not turn the PR red");
+    });
+
+    test("Should ignore action_required code-review check and return passing", () => {
+      const result = determineStatusFromChecks([ghRun("success"), reviewRun("action_required")]);
+      assert.strictEqual(result.dot, "🟢");
+    });
+
+    test("Should return no-ci when there are no GitHub Actions runs", () => {
+      const result = determineStatusFromChecks([reviewRun("success")]);
+      assert.strictEqual(result.dot, "⚪");
+    });
+
+    test("Should return no-ci when list is empty", () => {
+      const result = determineStatusFromChecks([]);
+      assert.strictEqual(result.dot, "⚪");
+    });
+
+    test("Should detect failure conclusion", () => {
+      const result = determineStatusFromChecks([ghRun("success"), ghRun("failure")]);
+      assert.strictEqual(result.dot, "🔴");
     });
 
     test("Should detect timed_out as failure", () => {
-      const runs = [{ status: "completed", conclusion: "timed_out" }];
-
-      const hasFailed = runs.some((run: any) =>
-        ["failure", "timed_out", "cancelled", "action_required"].includes(
-          run.conclusion,
-        ),
-      );
+      const result = determineStatusFromChecks([ghRun("timed_out")]);
+      assert.strictEqual(result.dot, "🔴");
 
       assert.strictEqual(hasFailed, true, "Should detect timeout as failure");
     });
 
     test("Should detect cancelled as failure", () => {
-      const runs = [{ status: "completed", conclusion: "cancelled" }];
-
-      const hasFailed = runs.some((run: any) =>
-        ["failure", "timed_out", "cancelled", "action_required"].includes(
-          run.conclusion,
-        ),
-      );
-
-      assert.strictEqual(hasFailed, true, "Should detect cancelled as failure");
+      const result = determineStatusFromChecks([ghRun("cancelled")]);
+      assert.strictEqual(result.dot, "🔴", "Should detect cancelled as failure");
     });
 
-    test("Should detect action_required as failure", () => {
-      const runs = [{ status: "completed", conclusion: "action_required" }];
+    test("Should detect stale as failure", () => {
+      const result = determineStatusFromChecks([ghRun("stale")]);
+      assert.strictEqual(result.dot, "🔴", "Should detect stale as failure");
+    });
 
-      const hasFailed = runs.some((run: any) =>
-        ["failure", "timed_out", "cancelled", "action_required"].includes(
-          run.conclusion,
-        ),
-      );
+    test("Should detect action_required on GitHub Actions run as failure", () => {
+      const result = determineStatusFromChecks([ghRun("action_required")]);
+      assert.strictEqual(result.dot, "🔴");
+    });
 
-      assert.strictEqual(
-        hasFailed,
-        true,
-        "Should detect action_required as failure",
-      );
+    test("Should return pending for in_progress run", () => {
+      const result = determineStatusFromChecks([ghRun("success"), ghRun(null, "in_progress")]);
+      assert.strictEqual(result.dot, "🟠");
+    });
+
+    test("Should return pending for queued run", () => {
+      const result = determineStatusFromChecks([ghRun(null, "queued")]);
+      assert.strictEqual(result.dot, "🟠");
+    });
+
+    test("Failed takes priority over pending", () => {
+      const result = determineStatusFromChecks([ghRun("failure"), ghRun(null, "in_progress")]);
+      assert.strictEqual(result.dot, "🔴");
+    });
+
+    test("Code-review pending run does not affect CI passing", () => {
+      const result = determineStatusFromChecks([ghRun("success"), reviewRun(null, "in_progress")]);
+      assert.strictEqual(result.dot, "🟢");
     });
   });
 

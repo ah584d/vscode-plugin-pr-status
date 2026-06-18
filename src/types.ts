@@ -42,6 +42,7 @@ export interface GitHubCheckRun {
   status: string;
   conclusion: string | null;
   name: string;
+  app?: { slug?: string };
 }
 
 export interface GitHubPullRequest {

@@ -26,30 +26,45 @@ export function extractGitHubRepoIds(
   return uniqueRepoIds;
 }
 
+// Conclusions that are NOT failures (everything else counts as red)
+const NON_FAILING_CONCLUSIONS = ["success", "skipped", "neutral"];
+
 /**
- * Determine PR status from GitHub check runs
+ * Determine PR status from GitHub check runs.
+ *
+ * Only GitHub Actions runs are considered — code-review gate checks and any
+ * other non-CI app checks are excluded.
+ *
+ * A run is a failure when it completes with any conclusion outside of
+ * success/skipped/neutral (e.g. failure, timed_out, cancelled, stale,
+ * action_required, or any future conclusion GitHub may add).
  */
-export function determineStatusFromChecks(runs: GitHubCheckRun[]): CheckResult {
+export function determineStatusFromChecks(allRuns: GitHubCheckRun[]): CheckResult {
+  // Exclude code-review gate checks; keep only GitHub Actions CI runs.
+  const runs = allRuns.filter((run) => run.app?.slug === "github-actions");
+
   if (runs.length === 0) {
     return { dot: "⚪", statusText: "No CI" };
   }
 
-  const hasFailed = runs.some((run) =>
-    ["failure", "timed_out", "cancelled", "action_required"].includes(
-      run.conclusion ?? "",
-    ),
-  );
-  const isPending = runs.some(
-    (run) => run.status !== "completed" || run.conclusion === null,
+  // Any completed run whose conclusion is not in the non-failing set is red.
+  const hasFailed = runs.some(
+    (run) =>
+      run.status === "completed" &&
+      !NON_FAILING_CONCLUSIONS.includes(run.conclusion ?? ""),
   );
 
+  // Failed takes priority over pending.
   if (hasFailed) {
     return { dot: "🔴", statusText: "Failed" };
-  } else if (isPending) {
-    return { dot: "🟠", statusText: "Pending" };
-  } else {
-    return { dot: "🟢", statusText: "Passing" };
   }
+
+  const isPending = runs.some((run) => run.status !== "completed");
+  if (isPending) {
+    return { dot: "🟠", statusText: "Pending" };
+  }
+
+  return { dot: "🟢", statusText: "Passing" };
 }
 
 /**
