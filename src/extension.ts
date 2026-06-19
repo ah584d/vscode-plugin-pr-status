@@ -186,7 +186,11 @@ async function fetchPRStatus(
   const runs = statusData.check_runs;
 
   if (runs.length > 0) {
-    return determineStatusFromChecks(runs);
+    const result = determineStatusFromChecks(runs);
+    console.log(
+      `[PR Monitor] Status for ${owner}/${repo}@${headSha.substring(0, 7)}: ${result.dot} ${result.statusText} (${runs.length} check runs)`,
+    );
+    return result;
   }
 
   // Fallback to commit statuses
@@ -197,7 +201,11 @@ async function fetchPRStatus(
       ref: headSha,
     });
 
-  return determineStatusFromCommitStatus(commitStatus.state);
+  const result = determineStatusFromCommitStatus(commitStatus.state);
+  console.log(
+    `[PR Monitor] Status for ${owner}/${repo}@${headSha.substring(0, 7)}: ${result.dot} ${result.statusText} (commit status: ${commitStatus.state})`,
+  );
+  return result;
 }
 
 /**
@@ -217,6 +225,10 @@ async function processPR(
     repo,
     pull_number: pr.number,
   });
+
+  console.log(
+    `[PR Monitor] Retrieved PR: ${owner}/${repo}#${pr.number} - "${prData.title}"`,
+  );
 
   // Get PR status
   const { dot, statusText } = await fetchPRStatus(
@@ -250,6 +262,8 @@ async function fetchAndDisplayPRs(
 ): Promise<boolean> {
   const searchQuery = buildGitHubSearchQuery(uniqueRepoIds, username);
 
+  console.log(`[PR Monitor] Searching for PRs with query: ${searchQuery}`);
+
   const { data: searchData } = await octokit.rest.search.issuesAndPullRequests({
     q: searchQuery,
     per_page: 50,
@@ -257,6 +271,8 @@ async function fetchAndDisplayPRs(
 
   const allMyPrs = searchData.items;
   const totalPRs = allMyPrs.length;
+
+  console.log(`[PR Monitor] Found ${totalPRs} PRs for user ${username}`);
 
   if (totalPRs === 0) {
     displayNoPRs(username);
