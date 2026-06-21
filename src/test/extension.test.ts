@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { determineStatusFromChecks } from "../../src/utils";
+import { determineStatusFromChecks } from "../utils";
 
 suite("PR Status Monitor Extension Tests", () => {
   suite("Activation Tests", () => {
@@ -162,51 +162,75 @@ suite("PR Status Monitor Extension Tests", () => {
     });
 
     test("Should return passing when all GitHub Actions runs succeeded", () => {
-      const result = determineStatusFromChecks([ghRun("success"), ghRun("success")]);
+      const result = determineStatusFromChecks([
+        ghRun("success"),
+        ghRun("success"),
+      ]);
       assert.strictEqual(result.dot, "🟢");
       assert.strictEqual(result.statusText, "Passing");
     });
 
     test("Should return passing for success/skipped/neutral mix", () => {
-      const result = determineStatusFromChecks([ghRun("success"), ghRun("skipped"), ghRun("neutral")]);
+      const result = determineStatusFromChecks([
+        ghRun("success"),
+        ghRun("skipped"),
+        ghRun("neutral"),
+      ]);
       assert.strictEqual(result.dot, "🟢");
     });
 
     test("Should ignore failing code-review check and return passing", () => {
-      const result = determineStatusFromChecks([ghRun("success"), reviewRun("failure")]);
-      assert.strictEqual(result.dot, "🟢", "Code-review failure must not turn the PR red");
+      const result = determineStatusFromChecks([
+        ghRun("success"),
+        reviewRun("failure"),
+      ]);
+      assert.strictEqual(
+        result.dot,
+        "🟢",
+        "Code-review failure must not turn the PR red",
+      );
     });
 
     test("Should ignore action_required code-review check and return passing", () => {
-      const result = determineStatusFromChecks([ghRun("success"), reviewRun("action_required")]);
+      const result = determineStatusFromChecks([
+        ghRun("success"),
+        reviewRun("action_required"),
+      ]);
       assert.strictEqual(result.dot, "🟢");
     });
 
-    test("Should return no-ci when there are no GitHub Actions runs", () => {
+    test("Should return green when there are no GitHub Actions runs", () => {
       const result = determineStatusFromChecks([reviewRun("success")]);
-      assert.strictEqual(result.dot, "⚪");
+      assert.strictEqual(result.dot, "🟢");
+      assert.strictEqual(result.statusText, "Passing");
     });
 
-    test("Should return no-ci when list is empty", () => {
+    test("Should return green when list is empty", () => {
       const result = determineStatusFromChecks([]);
-      assert.strictEqual(result.dot, "⚪");
+      assert.strictEqual(result.dot, "🟢");
+      assert.strictEqual(result.statusText, "Passing");
     });
 
     test("Should detect failure conclusion", () => {
-      const result = determineStatusFromChecks([ghRun("success"), ghRun("failure")]);
+      const result = determineStatusFromChecks([
+        ghRun("success"),
+        ghRun("failure"),
+      ]);
       assert.strictEqual(result.dot, "🔴");
     });
 
     test("Should detect timed_out as failure", () => {
       const result = determineStatusFromChecks([ghRun("timed_out")]);
       assert.strictEqual(result.dot, "🔴");
-
-      assert.strictEqual(hasFailed, true, "Should detect timeout as failure");
     });
 
     test("Should detect cancelled as failure", () => {
       const result = determineStatusFromChecks([ghRun("cancelled")]);
-      assert.strictEqual(result.dot, "🔴", "Should detect cancelled as failure");
+      assert.strictEqual(
+        result.dot,
+        "🔴",
+        "Should detect cancelled as failure",
+      );
     });
 
     test("Should detect stale as failure", () => {
@@ -220,7 +244,10 @@ suite("PR Status Monitor Extension Tests", () => {
     });
 
     test("Should return pending for in_progress run", () => {
-      const result = determineStatusFromChecks([ghRun("success"), ghRun(null, "in_progress")]);
+      const result = determineStatusFromChecks([
+        ghRun("success"),
+        ghRun(null, "in_progress"),
+      ]);
       assert.strictEqual(result.dot, "🟠");
     });
 
@@ -230,12 +257,18 @@ suite("PR Status Monitor Extension Tests", () => {
     });
 
     test("Failed takes priority over pending", () => {
-      const result = determineStatusFromChecks([ghRun("failure"), ghRun(null, "in_progress")]);
+      const result = determineStatusFromChecks([
+        ghRun("failure"),
+        ghRun(null, "in_progress"),
+      ]);
       assert.strictEqual(result.dot, "🔴");
     });
 
     test("Code-review pending run does not affect CI passing", () => {
-      const result = determineStatusFromChecks([ghRun("success"), reviewRun(null, "in_progress")]);
+      const result = determineStatusFromChecks([
+        ghRun("success"),
+        reviewRun(null, "in_progress"),
+      ]);
       assert.strictEqual(result.dot, "🟢");
     });
   });

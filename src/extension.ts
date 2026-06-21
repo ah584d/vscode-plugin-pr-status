@@ -5,11 +5,12 @@ import {
   GitHubPullRequest,
   PRCounts,
   ProcessedPRResult,
+  PRTableRow,
 } from "./types";
 import {
   extractGitHubRepoIds,
   determineStatusFromChecks,
-  determineStatusFromCommitStatus,
+  determineStatusFromCommitStatuses,
   buildStatusBarText,
   buildTooltipLine,
   buildTooltipText,
@@ -19,6 +20,7 @@ import {
   buildGitHubSearchQuery,
   buildQuickPickItems,
   buildNotificationMessage,
+  formatPRTable,
 } from "./utils";
 
 const FAST_POLLING_MS = 10 * 1000; // 10 seconds for initial connection or reconnection
@@ -26,6 +28,7 @@ const FAST_POLLING_MS = 10 * 1000; // 10 seconds for initial connection or recon
 let myStatusBarItem: vscode.StatusBarItem;
 let intervalId: NodeJS.Timeout;
 let allPRs: PR[] = [];
+let outputChannel: vscode.OutputChannel;
 
 // Track previous PR statuses to detect changes
 let previousPRStatuses: Map<string, string> = new Map();
@@ -34,7 +37,13 @@ let octokitInstance: OctokitInstance | null = null;
 let normalPollingMs = 120000; // Default 2 minutes
 
 export async function activate(context: vscode.ExtensionContext) {
-  // 1. Create the status bar item
+  // 1. Create the output channel for logging
+  outputChannel = vscode.window.createOutputChannel("PR Status Monitor");
+  context.subscriptions.push(outputChannel);
+
+  outputChannel.appendLine("PR Status Monitor activated");
+
+  // 2. Create the status bar item
   myStatusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     100,
@@ -46,7 +55,7 @@ export async function activate(context: vscode.ExtensionContext) {
   myStatusBarItem.tooltip = "Connecting to GitHub...";
   myStatusBarItem.show();
 
-  // 2. Register click command to open the primary or latest PR
+  // 3. Register click command to open the primary or latest PR
   const openCommand = vscode.commands.registerCommand(
     "pr-status-monitor.openPrInBrowser",
     async () => {
@@ -93,6 +102,10 @@ export async function activate(context: vscode.ExtensionContext) {
       const pollingMinutes = config.get<number>("pollingInterval", 2);
       normalPollingMs = pollingMinutes * 60 * 1000;
 
+      outputChannel.appendLine(
+        `Polling interval set to ${pollingMinutes} minute(s) (${normalPollingMs}ms)`,
+      );
+
       // Start connection attempts
       await attemptConnection();
 
@@ -122,6 +135,9 @@ async function attemptConnection() {
   if (connected && !wasConnected) {
     // Just connected! Switch to normal polling interval
     isConnected = true;
+    outputChannel.appendLine(
+      `✅ Connected to GitHub! Switching to normal polling (${normalPollingMs / 1000}s)`,
+    );
     if (intervalId) {
       clearInterval(intervalId);
     }
@@ -129,6 +145,9 @@ async function attemptConnection() {
   } else if (!connected && wasConnected) {
     // Lost connection! Switch back to fast polling to reconnect quickly
     isConnected = false;
+    outputChannel.appendLine(
+      `⚠️ Connection lost! Switching to fast polling (${FAST_POLLING_MS / 1000}s) to reconnect`,
+    );
     if (intervalId) {
       clearInterval(intervalId);
     }
@@ -175,7 +194,7 @@ async function fetchPRStatus(
   owner: string,
   repo: string,
   headSha: string,
-): Promise<{ dot: string; statusText: string }> {
+): Promise<{ dot: string; statusText: string; checksInfo: string }> {
   // Check GitHub actions / checks
   const { data: statusData } = await octokit.rest.checks.listForRef({
     owner,
@@ -186,7 +205,8 @@ async function fetchPRStatus(
   const runs = statusData.check_runs;
 
   if (runs.length > 0) {
-    return determineStatusFromChecks(runs);
+    const result = determineStatusFromChecks(runs);
+    return { ...result, checksInfo: `${runs.length} check runs` };
   }
 
   // Fallback to commit statuses
@@ -197,7 +217,9 @@ async function fetchPRStatus(
       ref: headSha,
     });
 
-  return determineStatusFromCommitStatus(commitStatus.state);
+  // Use individual statuses to filter out code review checks
+  const result = determineStatusFromCommitStatuses(commitStatus.statuses);
+  return { ...result, checksInfo: `${commitStatus.statuses.length} statuses` };
 }
 
 /**
@@ -219,7 +241,7 @@ async function processPR(
   });
 
   // Get PR status
-  const { dot, statusText } = await fetchPRStatus(
+  const { dot, statusText, checksInfo } = await fetchPRStatus(
     octokit,
     owner,
     repo,
@@ -237,7 +259,7 @@ async function processPR(
 
   const repoPrefix = getRepoPrefix(repo, hasMultipleRepos);
 
-  return { prData, owner, repo, dot, statusText, repoPrefix };
+  return { prData, owner, repo, dot, statusText, repoPrefix, checksInfo };
 }
 
 /**
@@ -250,6 +272,8 @@ async function fetchAndDisplayPRs(
 ): Promise<boolean> {
   const searchQuery = buildGitHubSearchQuery(uniqueRepoIds, username);
 
+  outputChannel.appendLine(`Searching for PRs with query: ${searchQuery}`);
+
   const { data: searchData } = await octokit.rest.search.issuesAndPullRequests({
     q: searchQuery,
     per_page: 50,
@@ -258,6 +282,8 @@ async function fetchAndDisplayPRs(
   const allMyPrs = searchData.items;
   const totalPRs = allMyPrs.length;
 
+  outputChannel.appendLine(`Found ${totalPRs} PRs for user ${username}`);
+
   if (totalPRs === 0) {
     displayNoPRs(username);
     return true;
@@ -265,18 +291,29 @@ async function fetchAndDisplayPRs(
 
   const counts = { success: 0, failure: 0, pending: 0 };
   const tooltipLines: string[] = [];
+  const prTableData: PRTableRow[] = [];
   allPRs = [];
 
   const hasMultipleRepos = uniqueRepoIds.size > 1;
 
   for (const pr of allMyPrs) {
-    const { prData, owner, repo, dot, statusText, repoPrefix } =
+    const { prData, owner, repo, dot, statusText, repoPrefix, checksInfo } =
       await processPR(octokit, pr, hasMultipleRepos, counts);
 
     // Build tooltip line
     tooltipLines.push(
       buildTooltipLine(dot, repoPrefix, pr.number, pr.title, statusText),
     );
+
+    // Store PR info for table display
+    prTableData.push({
+      status: dot,
+      repo: hasMultipleRepos ? `${owner}/${repo}` : repo,
+      prNumber: pr.number,
+      title: pr.title,
+      sha: prData.head.sha.substring(0, 7),
+      checksInfo,
+    });
 
     // Store PR info for QuickPick menu
     allPRs.push({
@@ -295,6 +332,9 @@ async function fetchAndDisplayPRs(
     // Update the status tracker
     previousPRStatuses.set(prKey, dot);
   }
+
+  // Display PR table in output channel
+  outputChannel.appendLine("\n" + formatPRTable(prTableData) + "\n");
 
   // Update status bar
   updateStatusBar(totalPRs, counts, tooltipLines);
@@ -373,9 +413,10 @@ async function updatePRStatus(
     const { data: user } = await octokit.rest.users.getAuthenticated();
     return await fetchAndDisplayPRs(octokit, uniqueRepoIds, user.login);
   } catch (error) {
-    console.error("PR Monitor Error: ", error);
+    outputChannel.appendLine(`❌ Error: ${error}`);
     if (!isInitialConnection) {
       setOfflineStatus("API Error");
+      outputChannel.show(true); // Show output channel on error
     }
     return false;
   }
@@ -392,5 +433,9 @@ function setOfflineStatus(reason: string) {
 export function deactivate() {
   if (intervalId) {
     clearInterval(intervalId);
+  }
+  if (outputChannel) {
+    outputChannel.appendLine("PR Status Monitor deactivated");
+    outputChannel.dispose();
   }
 }
