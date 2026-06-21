@@ -77,6 +77,7 @@ export interface ProcessedPRResult {
   dot: string;
   statusText: string;
   repoPrefix: string;
+  checksInfo: string;
 }
 
 // Octokit type - using a simplified interface for type safety
@@ -110,7 +111,21 @@ export interface OctokitInstance {
         owner: string;
         repo: string;
         ref: string;
-      }): Promise<{ data: { state: string } }>;
+      }): Promise<{
+        data: {
+          state: string;
+          statuses: Array<{ state: string; context: string }>;
+        };
+      }>;
     };
   };
+}
+
+export interface PRTableRow {
+  status: string;
+  repo: string;
+  prNumber: number;
+  title: string;
+  sha: string;
+  checksInfo: string;
 }

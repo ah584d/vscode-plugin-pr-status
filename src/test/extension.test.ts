@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { determineStatusFromChecks } from "../../src/utils";
+import { determineStatusFromChecks } from "../utils";
 
 suite("PR Status Monitor Extension Tests", () => {
   suite("Activation Tests", () => {
@@ -199,14 +199,16 @@ suite("PR Status Monitor Extension Tests", () => {
       assert.strictEqual(result.dot, "🟢");
     });
 
-    test("Should return no-ci when there are no GitHub Actions runs", () => {
+    test("Should return green when there are no GitHub Actions runs", () => {
       const result = determineStatusFromChecks([reviewRun("success")]);
-      assert.strictEqual(result.dot, "⚪");
+      assert.strictEqual(result.dot, "🟢");
+      assert.strictEqual(result.statusText, "Passing");
     });
 
-    test("Should return no-ci when list is empty", () => {
+    test("Should return green when list is empty", () => {
       const result = determineStatusFromChecks([]);
-      assert.strictEqual(result.dot, "⚪");
+      assert.strictEqual(result.dot, "🟢");
+      assert.strictEqual(result.statusText, "Passing");
     });
 
     test("Should detect failure conclusion", () => {

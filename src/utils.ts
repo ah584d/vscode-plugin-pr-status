@@ -39,12 +39,14 @@ const NON_FAILING_CONCLUSIONS = ["success", "skipped", "neutral"];
  * success/skipped/neutral (e.g. failure, timed_out, cancelled, stale,
  * action_required, or any future conclusion GitHub may add).
  */
-export function determineStatusFromChecks(allRuns: GitHubCheckRun[]): CheckResult {
+export function determineStatusFromChecks(
+  allRuns: GitHubCheckRun[],
+): CheckResult {
   // Exclude code-review gate checks; keep only GitHub Actions CI runs.
   const runs = allRuns.filter((run) => run.app?.slug === "github-actions");
 
   if (runs.length === 0) {
-    return { dot: "⚪", statusText: "No CI" };
+    return { dot: "🟢", statusText: "Passing" };
   }
 
   // Any completed run whose conclusion is not in the non-failing set is red.
@@ -68,17 +70,42 @@ export function determineStatusFromChecks(allRuns: GitHubCheckRun[]): CheckResul
 }
 
 /**
- * Determine PR status from commit status
+ * Determine PR status from individual commit statuses, filtering out code review checks
  */
-export function determineStatusFromCommitStatus(state: string): CheckResult {
-  if (state === "success") {
+export function determineStatusFromCommitStatuses(
+  statuses: Array<{ state: string; context: string }>,
+): CheckResult {
+  // Filter out code review and other non-CI contexts
+  const ciStatuses = statuses.filter((s) => {
+    const ctx = s.context.toLowerCase();
+    // Exclude common review/approval contexts
+    return (
+      !ctx.includes("review") &&
+      !ctx.includes("approval") &&
+      !ctx.includes("pr-status")
+    );
+  });
+
+  if (ciStatuses.length === 0) {
     return { dot: "🟢", statusText: "Passing" };
-  } else if (state === "failure" || state === "error") {
+  }
+
+  // Check for any failures
+  const hasFailed = ciStatuses.some(
+    (s) => s.state === "failure" || s.state === "error",
+  );
+  if (hasFailed) {
     return { dot: "🔴", statusText: "Failed" };
-  } else if (state === "pending") {
+  }
+
+  // Check for pending
+  const isPending = ciStatuses.some((s) => s.state === "pending");
+  if (isPending) {
     return { dot: "🟠", statusText: "Pending" };
   }
-  return { dot: "⚪", statusText: "No CI" };
+
+  // All CI statuses are successful
+  return { dot: "🟢", statusText: "Passing" };
 }
 
 /**
@@ -197,4 +224,44 @@ export function buildNotificationMessage(
   } else {
     return `❌ PR ${repoPrefix}#${prNumber} has failed!`;
   }
+}
+
+/**
+ * Format PR status data as a table
+ */
+export function formatPRTable(
+  prData: Array<{
+    status: string;
+    repo: string;
+    prNumber: number;
+    title: string;
+    sha: string;
+    checksInfo: string;
+  }>,
+): string {
+  if (prData.length === 0) {
+    return "No PRs to display";
+  }
+
+  // Calculate column widths
+  const maxRepoLen = Math.max(4, ...prData.map((pr) => pr.repo.length));
+  const maxPRLen = Math.max(
+    3,
+    ...prData.map((pr) => pr.prNumber.toString().length),
+  );
+  const maxChecksLen = Math.max(6, ...prData.map((pr) => pr.checksInfo.length));
+
+  // Build header (no borders, just spacing)
+  const header = `Status  ${"Repo".padEnd(maxRepoLen)}  ${"PR#".padEnd(maxPRLen)}  Title                                                       ${"SHA".padEnd(7)}  ${"Checks".padEnd(maxChecksLen)}`;
+  const separator = "─".repeat(header.length);
+
+  // Build rows
+  const rows = prData.map((pr) => {
+    const truncatedTitle =
+      pr.title.length > 60 ? pr.title.substring(0, 57) + "..." : pr.title;
+    return `${pr.status}  ${pr.repo.padEnd(maxRepoLen)}  ${pr.prNumber.toString().padEnd(maxPRLen)}  ${truncatedTitle.padEnd(60)}  ${pr.sha.padEnd(7)}  ${pr.checksInfo.padEnd(maxChecksLen)}`;
+  });
+
+  // Combine all parts
+  return [header, separator, ...rows].join("\n");
 }
