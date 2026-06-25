@@ -2,10 +2,9 @@
 
 > **Stop refreshing GitHub.** Get real-time pull request CI status, smart notifications, and one-click navigation — all from your VS Code status bar.
 
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/ah584d.pr-status-monitor?label=Marketplace&logo=visual-studio-code&color=blue)](https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/ah584d.pr-status-monitor?label=Installs&color=brightgreen)](https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/ah584d.pr-status-monitor?label=Rating&color=orange)](https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor)
-[![GitHub License](https://img.shields.io/github/license/ah584d/vscode-plugin-pr-status?color=lightgrey)](https://github.com/ah584d/vscode-plugin-pr-status/blob/main/LICENSE)
+[![Visual Studio Code](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](https://code.visualstudio.com/)
+[![Version](https://img.shields.io/badge/version-0.0.12-brightgreen.svg)]()
+[![GitHub License](https://img.shields.io/badge/license-MIT-lightgrey.svg)]()
 
 ---
 
