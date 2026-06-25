@@ -1,7 +1,7 @@
 {
   "name": "pr-status-monitor",
   "displayName": "PR Status Monitor",
-  "description": "Displays open PR count and status.",
+  "description": "Stop refreshing GitHub — get real-time pull request CI status, notifications, and one-click navigation directly in your VS Code status bar.",
   "version": "0.0.11",
   "_last_dev_versioning_for_cache": "0.0.1-dev.10",
   "_update_version_as_well_in_READ_ME": "0.0.11",
@@ -21,7 +21,20 @@
     "vscode": "^1.103.0"
   },
   "categories": [
-    "SCM Providers"
+    "SCM Providers",
+    "Other"
+  ],
+  "keywords": [
+    "git",
+    "github",
+    "pull-request",
+    "code-review",
+    "ci",
+    "workflow",
+    "status",
+    "notifications",
+    "actions",
+    "pr"
   ],
   "activationEvents": [
     "onStartupFinished"

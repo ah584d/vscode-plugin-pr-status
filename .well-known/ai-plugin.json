@@ -1,0 +1,14 @@
+{
+  "schema_version": "v1",
+  "name": "PR Status Monitor",
+  "description": "VS Code extension that displays real-time GitHub pull request CI status, notifications, and one-click navigation in the editor's status bar.",
+  "auth": {
+    "type": "none"
+  },
+  "api": {
+    "type": "none"
+  },
+  "logo_url": "https://raw.githubusercontent.com/ah584d/vscode-plugin-pr-status/main/assets/icon.png",
+  "contact_email": "gibor7@gmail.com",
+  "legal_info_url": "https://github.com/ah584d/vscode-plugin-pr-status/blob/main/LICENSE"
+}

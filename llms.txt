@@ -1,0 +1,55 @@
+# PR Status Monitor
+
+> VS Code extension that displays real-time GitHub pull request CI status in the editor's status bar.
+
+## Overview
+
+PR Status Monitor is a Visual Studio Code extension that tracks open pull requests authored by the user across all repositories and Git worktrees in the workspace. It polls GitHub APIs (Actions check runs + commit statuses) and shows an aggregated pass/fail/pending summary in the VS Code status bar. It sends desktop notifications when PR statuses change and supports one-click navigation to PRs in the browser.
+
+## Links
+
+- Marketplace: https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor
+- Source: https://github.com/ah584d/vscode-plugin-pr-status
+- Issues: https://github.com/ah584d/vscode-plugin-pr-status/issues
+
+## Tech Stack
+
+- Language: TypeScript
+- Runtime: VS Code Extension Host (Node.js)
+- Build: esbuild
+- Package Manager: pnpm
+- Linting: ESLint (flat config)
+- Testing: @vscode/test-cli + Mocha
+- GitHub API: @octokit/rest
+- Authentication: VS Code built-in GitHub auth provider (no PAT required)
+
+## Project Structure
+
+- src/extension.ts: Main entry point — activation, polling loop, status bar, notifications
+- src/types.ts: TypeScript interfaces for PRs, GitHub API responses, Octokit
+- src/utils.ts: Pure utility functions — repo extraction, status determination, text formatting
+- src/test/: Unit and integration tests
+- assets/: Extension icon and screenshots
+- package.json: Extension manifest (contributes commands, configuration, activation events)
+
+## Key Concepts
+
+- Polls GitHub using Octokit search API to find user-authored open PRs
+- Determines CI status by combining check runs and commit statuses per PR
+- Status hierarchy: failure > pending > success
+- Uses a 10-second fast-poll on startup until first successful connection, then switches to configurable interval (default 2 min)
+- Tracks previous PR statuses in a Map to detect transitions and fire notifications
+- Supports multi-root workspaces and Git worktrees via VS Code's built-in Git extension API
+
+## Configuration
+
+- `prStatusMonitor.pollingInterval` (number, 1–60, default 2): Polling interval in minutes
+
+## Contributing
+
+1. Clone the repo
+2. Run `pnpm install`
+3. Press F5 in VS Code to launch the Extension Development Host
+4. Run tests: `pnpm test`
+5. Lint: `pnpm lint`
+6. Package: `pnpm build`

@@ -1,72 +1,131 @@
 # 📡 PR Status Monitor
 
-[![Visual Studio Code](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](https://code.visualstudio.com/)
-[![Version](https://img.shields.io/badge/version-0.0.11-brightgreen.svg)]()
-[![GitHub License](https://img.shields.io/badge/license-MIT-lightgrey.svg)]()
+> **Stop refreshing GitHub.** Get real-time pull request CI status, smart notifications, and one-click navigation — all from your VS Code status bar.
 
-**PR Status Monitor** is a sleek, intelligent VS Code extension that keeps you intimately connected to your GitHub Pull Requests directly from your editor's status bar. Instead of context-switching to your browser, get instant visual feedback on whether your CI/CD checks have passed, failed, or are still pending!
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/ah584d.pr-status-monitor?label=Marketplace&logo=visual-studio-code&color=blue)](https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/ah584d.pr-status-monitor?label=Installs&color=brightgreen)](https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor)
+[![Rating](https://img.shields.io/visual-studio-marketplace/r/ah584d.pr-status-monitor?label=Rating&color=orange)](https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor)
+[![GitHub License](https://img.shields.io/github/license/ah584d/vscode-plugin-pr-status?color=lightgrey)](https://github.com/ah584d/vscode-plugin-pr-status/blob/main/LICENSE)
+
+---
+
+<!-- 🎬 DEMO: Replace with an animated GIF showing the extension in action.
+     Record a short GIF (15-30s) that shows:
+       1. The status bar widget updating
+       2. A notification popping up when a PR passes/fails
+       3. Clicking the status bar to open a PR in the browser
+     Tools: LICEcap, Gifox, or VS Code's built-in screen recorder.
+     Save as assets/demo.gif and uncomment the line below:
+-->
+<!-- ![PR Status Monitor in action](assets/demo.gif) -->
+
+## 🚀 Quick Start — 3 Steps
+
+1. **Install** — Search for _"PR Status Monitor"_ in the VS Code Extensions panel, or click the button below:
+
+   [![Install from Marketplace](https://img.shields.io/badge/Install-VS%20Code%20Marketplace-blue?logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor)
+
+2. **Sign in to GitHub** — When prompted, authorize VS Code to access your GitHub account. The extension uses VS Code's built-in GitHub authentication — **no personal access tokens needed**.
+
+3. **You're done!** — Open any workspace with a Git repo. Your PR statuses appear instantly in the status bar:
+
+   ![Status Bar](assets/status2.jpg)
+   _(3 open PRs: 1 passing, 1 failed, 1 pending)_
+
+
+---
 
 ## ✨ Features
 
-- **🚀 Universal Worktree Support:** Accurately aggregates and tracks all PRs you have authored across all active repositories and unique worktrees opened in your VS Code workspace.
-- **🚥 Real-time CI Integration:** Reads GitHub Actions and Commit Statuses to color-code your PRs:
-  - 🟢 **Passing:** Everything is good to go!
-  - 🟠 **Pending:** Checks are still running.
-  - 🔴 **Failed:** Action required (check logs for failures, timeouts, etc.).
-- **🔔 Smart Notifications:** Get instant notifications when your PR status changes:
-  - ✅ **Success Alert:** Notified when a pending PR passes all checks
-  - ❌ **Failure Alert:** Notified when a pending PR fails
-  - Each notification includes a "View PR" button to jump directly to the PR
-- **🔄 Automatic Reconnection:** Fast 10-second retry polling during startup and after connection loss, ensuring you're always up-to-date
-- **🖱️ One-Click Navigation:** Click the status bar widget to instantly jump straight to your latest active PR in your default web browser.
-- **📊 Detailed Tooltips:** Hover over the status bar item to see an organized list of all your open PRs along with their specific build status.
+### 🚥 Real-time CI Status at a Glance
 
-## 🛠️ Usage
+See the combined status of all your authored PRs across every repo and worktree in your workspace — without leaving your editor.
 
-Once installed, the PR Status Monitor automatically activates on startup.
-It seamlessly authenticates with your built-in VS Code GitHub account. You'll see an icon appearing in the lower-left corner of your status bar indicating:
+- 🟢 **Passing** — All checks succeeded
+- 🟠 **Pending** — Checks still running
+- 🔴 **Failed** — Action required
 
-`3 PRs | 🟢1 🔴1 🟠1`
+### 🔔 Smart Notifications
 
-_(Example: 3 Open PRs total. 1 Passing, 1 Failed, 1 Pending)._
+Get notified the moment a PR's status changes — no more anxiously refreshing the GitHub checks tab.
 
-**Notifications:**
+- ✅ _"PR #123 is now passing!"_ when a pending PR passes all checks
+- ❌ _"PR #123 has failed!"_ when a pending PR fails
+- Each notification includes a **"View PR"** button to jump directly to the PR
 
-- When a pending PR (🟠) completes and passes all checks, you'll receive a success notification: "✅ PR #123 is now passing!"
-- When a pending PR (🟠) fails checks, you'll receive a warning notification: "❌ PR #123 has failed!"
-- Click "View PR" in any notification to open the PR directly in your browser
+![PR Status Change Notifications](assets/status.jpg)
 
-![PR Status Change Notifications](assets/notification.png)
+### 🚀 Universal Worktree Support
+
+Works seamlessly with multi-root workspaces and Git worktrees. Tracks PRs you authored across all repositories and worktrees open in your editor.
+
+### 🖱️ One-Click Navigation
+
+Click the status bar widget to open your latest active PR directly in your browser.
+
+### 📊 Rich Tooltips
+
+Hover over the status bar item to see an organized breakdown of all your open PRs and their individual build statuses.
+
+### 🔄 Reliable Connectivity
+
+Fast 10-second retry polling during startup and after connection loss — you're always up to date.
+
+---
 
 ## ⚙️ Configuration
 
-You can customize the polling interval in VS Code settings:
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `prStatusMonitor.pollingInterval` | number | `2` | How often to check PR status (in minutes). Min: 1, Max: 60. |
 
-- **`prStatusMonitor.pollingInterval`** _(number, default: `2`)_
-  How often to check PR status, in minutes. Minimum: 1, Maximum: 60.
+To change it:
 
-  To change it:
-  1. Open Settings (`Cmd+,` or `Ctrl+,`)
-  2. Search for "PR Status Monitor"
-  3. Adjust the "Polling Interval" value
+1. Open Settings (`Cmd+,` / `Ctrl+,`)
+2. Search for **"PR Status Monitor"**
+3. Adjust the **Polling Interval** value
 
-  Or add to your `settings.json`:
+Or add to your `settings.json`:
 
-  ```json
-  {
-    "prStatusMonitor.pollingInterval": 5
-  }
-  ```
+```json
+{
+  "prStatusMonitor.pollingInterval": 5
+}
+```
+
+---
 
 ## 📋 Requirements
 
-- VS Code version `^1.103.0`
-- You must be signed in to GitHub within VS Code.
+| Requirement | Details |
+|-------------|---------|
+| VS Code | `1.103.0` or newer |
+| GitHub | Signed in via VS Code's built-in GitHub auth |
+
+---
+
+## 🤔 Why PR Status Monitor?
+
+| Without PR Status Monitor | With PR Status Monitor |
+|--------------------------|----------------------|
+| Alt-Tab to browser, navigate to GitHub, find your PR, check the status... repeat every 5 minutes | Glance at your status bar — done |
+| Miss a failed check and waste 30 minutes waiting | Get notified instantly when your PR fails or passes |
+| Forget which repo had the pending PR | All PRs from all open repos aggregated in one place |
+
+---
 
 ## 👨‍💻 Author
 
 Created with ❤️ by **Avraham Hamu**.
 
+- 🏪 [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor)
+
 ---
 
-_If you find this extension helpful, please share it with your team or open an issue on the repository!_
+## ⭐ Enjoying PR Status Monitor?
+
+If this extension saves you time, consider:
+
+- ⭐ [**Leave a review**](https://marketplace.visualstudio.com/items?itemName=ah584d.pr-status-monitor&ssr=false#review-details) on the VS Code Marketplace
+- 🌟 [**Star the repo**](https://github.com/ah584d/vscode-plugin-pr-status) on GitHub
+- 📣 **Share it** with your team — they'll thank you!
