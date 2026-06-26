@@ -29,6 +29,7 @@
 3. **You're done!** — Open any workspace with a Git repo. Your PR statuses appear instantly in the status bar:
 
    ![Status Bar](assets/status2.jpg)
+
    _(3 open PRs: 1 passing, 1 failed, 1 pending)_
 
 
