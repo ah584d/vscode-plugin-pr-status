@@ -22,6 +22,7 @@ import {
   buildNotificationMessage,
   formatPRTable,
 } from "./utils";
+import { openInvestigateChat } from "./notifications";
 
 const FAST_POLLING_MS = 10 * 1000; // 10 seconds for initial connection or reconnection
 
@@ -35,6 +36,7 @@ let previousPRStatuses: Map<string, string> = new Map();
 let isConnected = false;
 let octokitInstance: OctokitInstance | null = null;
 let normalPollingMs = 120000; // Default 2 minutes
+let showInvestigateOnFailure = false;
 
 export async function activate(context: vscode.ExtensionContext) {
   // 1. Create the output channel for logging
@@ -101,6 +103,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const config = vscode.workspace.getConfiguration("prStatusMonitor");
       const pollingMinutes = config.get<number>("pollingInterval", 2);
       normalPollingMs = pollingMinutes * 60 * 1000;
+      showInvestigateOnFailure = config.get<boolean>("showInvestigateOnFailure", false);
 
       outputChannel.appendLine(
         `Polling interval set to ${pollingMinutes} minute(s) (${normalPollingMs}ms)`,
@@ -177,11 +180,20 @@ function notifyStatusChange(
         });
     } else if (currentStatus === "🔴") {
       const message = buildNotificationMessage("failure", repoPrefix, prNumber);
-      vscode.window.showWarningMessage(message, "View PR").then((selection) => {
-        if (selection === "View PR") {
-          vscode.env.openExternal(vscode.Uri.parse(prUrl));
-        }
-      });
+      const buttons = showInvestigateOnFailure ? ["View PR", "Investigate"] : ["View PR"];
+      vscode.window
+        .showWarningMessage(message, ...buttons)
+        .then((selection) => {
+          if (selection === "View PR") {
+            vscode.env.openExternal(vscode.Uri.parse(prUrl));
+          } else if (selection === "Investigate") {
+            openInvestigateChat(prNumber, prUrl);
+          }
+        });
+
+      if (showInvestigateOnFailure) {
+        openInvestigateChat(prNumber, prUrl);
+      }
     }
   }
 }

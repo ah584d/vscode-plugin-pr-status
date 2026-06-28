@@ -55,6 +55,14 @@ Get notified the moment a PR's status changes — no more anxiously refreshing t
 
 ![PR Status Change Notifications](assets/status.jpg)
 
+### 🤖 Copilot-Powered Failure Investigation
+
+When a PR fails, let GitHub Copilot help you understand why — without leaving VS Code.
+
+- Enable `prStatusMonitor.showInvestigateOnFailure` to activate this feature
+- On failure, Copilot Chat **opens automatically** with a pre-filled prompt asking it to investigate the build failure
+- The failure notification also gains an **"Investigate"** button as a manual re-trigger
+
 ### 🚀 Universal Worktree Support
 
 Works seamlessly with multi-root workspaces and Git worktrees. Tracks PRs you authored across all repositories and worktrees open in your editor.
@@ -78,6 +86,7 @@ Fast 10-second retry polling during startup and after connection loss — you're
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `prStatusMonitor.pollingInterval` | number | `2` | How often to check PR status (in minutes). Min: 1, Max: 60. |
+| `prStatusMonitor.showInvestigateOnFailure` | boolean | `false` | When enabled, automatically opens Copilot Chat with a pre-filled investigation prompt when a PR build fails. Also adds an "Investigate" button to the failure notification. |
 
 To change it:
 
