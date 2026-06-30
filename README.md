@@ -59,9 +59,10 @@ Get notified the moment a PR's status changes — no more anxiously refreshing t
 
 When a PR fails, let GitHub Copilot help you understand why — without leaving VS Code.
 
-- Enable `prStatusMonitor.showInvestigateOnFailure` to activate this feature
 - On failure, Copilot Chat **opens automatically** with a pre-filled prompt asking it to investigate the build failure
 - The failure notification also gains an **"Investigate"** button as a manual re-trigger
+
+![PR Status Change Notifications](assets/status3.png)
 
 ### 🚀 Universal Worktree Support
 
