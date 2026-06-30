@@ -3,7 +3,7 @@
 > **Stop refreshing GitHub.** Get real-time pull request CI status, smart notifications, and one-click navigation — all from your VS Code status bar.
 
 [![Visual Studio Code](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](https://code.visualstudio.com/)
-[![Version](https://img.shields.io/badge/version-0.0.12-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-0.0.13-brightgreen.svg)]()
 [![GitHub License](https://img.shields.io/badge/license-MIT-lightgrey.svg)]()
 
 ---
@@ -55,6 +55,14 @@ Get notified the moment a PR's status changes — no more anxiously refreshing t
 
 ![PR Status Change Notifications](assets/status.jpg)
 
+### 🤖 Copilot-Powered Failure Investigation
+
+When a PR fails, let GitHub Copilot help you understand why — without leaving VS Code.
+
+- Enable `prStatusMonitor.showInvestigateOnFailure` to activate this feature
+- On failure, Copilot Chat **opens automatically** with a pre-filled prompt asking it to investigate the build failure
+- The failure notification also gains an **"Investigate"** button as a manual re-trigger
+
 ### 🚀 Universal Worktree Support
 
 Works seamlessly with multi-root workspaces and Git worktrees. Tracks PRs you authored across all repositories and worktrees open in your editor.
@@ -77,19 +85,21 @@ Fast 10-second retry polling during startup and after connection loss — you're
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `prStatusMonitor.pollingInterval` | number | `2` | How often to check PR status (in minutes). Min: 1, Max: 60. |
+| `prStatusMonitor.pollingInterval` | number | `2` | How often to check PR status (in minutes). Min: 0.5 (30s), Max: 60. |
+| `prStatusMonitor.showInvestigateOnFailure` | boolean | `false` | When enabled, automatically opens Copilot Chat with a pre-filled investigation prompt when a PR build fails. Also adds an "Investigate" button to the failure notification. |
 
-To change it:
+To change these settings:
 
 1. Open Settings (`Cmd+,` / `Ctrl+,`)
 2. Search for **"PR Status Monitor"**
-3. Adjust the **Polling Interval** value
+3. Adjust the desired values
 
 Or add to your `settings.json`:
 
 ```json
 {
-  "prStatusMonitor.pollingInterval": 5
+  "prStatusMonitor.pollingInterval": 0.5,
+  "prStatusMonitor.showInvestigateOnFailure": true
 }
 ```
 

@@ -2,9 +2,9 @@
   "name": "pr-status-monitor",
   "displayName": "PR Status Monitor",
   "description": "Stop refreshing GitHub — get real-time pull request CI status, notifications, and one-click navigation directly in your VS Code status bar.",
-  "version": "0.0.12",
-  "_last_dev_versioning_for_cache": "0.0.1-dev.10",
-  "_update_version_as_well_in_READ_ME_and_changelog": "0.0.12",
+  "version": "0.0.13",
+  "_last_dev_versioning_for_cache": "0.0.1-dev.11",
+  "_update_version_as_well_in_READ_ME": "0.0.13",
   "license": "MIT",
   "publisher": "ah584d",
   "author": {
@@ -53,9 +53,14 @@
         "prStatusMonitor.pollingInterval": {
           "type": "number",
           "default": 2,
-          "minimum": 1,
+          "minimum": 0.5,
           "maximum": 60,
-          "description": "How often to check PR status (in minutes)"
+          "description": "How often to check PR status (in minutes). Minimum 0.5 (30 seconds)."
+        },
+        "prStatusMonitor.showInvestigateOnFailure": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show an 'Investigate' button in the failure notification that opens Copilot Chat to explain the build failure"
         }
       }
     }
