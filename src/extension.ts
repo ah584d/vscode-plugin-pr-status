@@ -190,10 +190,6 @@ function notifyStatusChange(
             openInvestigateChat(prNumber, prUrl);
           }
         });
-
-      if (showInvestigateOnFailure) {
-        openInvestigateChat(prNumber, prUrl);
-      }
     }
   }
 }
