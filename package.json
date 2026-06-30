@@ -4,7 +4,7 @@
   "description": "Stop refreshing GitHub — get real-time pull request CI status, notifications, and one-click navigation directly in your VS Code status bar.",
   "version": "0.0.12",
   "_last_dev_versioning_for_cache": "0.0.1-dev.10",
-  "_update_version_as_well_in_READ_ME": "0.0.12",
+  "_update_version_as_well_in_READ_ME_and_changelog": "0.0.12",
   "license": "MIT",
   "publisher": "ah584d",
   "author": {
