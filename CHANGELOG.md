@@ -4,11 +4,27 @@ All notable changes to the "pr-status-monitor" extension will be documented in t
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.14] - 2026-07-01
+
+### Added
+
+- **Automatic investigation prompt firing** — when `prStatusMonitor.showInvestigateOnFailure` is enabled, Copilot Chat now opens automatically with investigation context whenever a PR fails, in addition to showing the notification button.
+
+### Changed
+
+- Code formatting improvements for better readability
+
+### Tests
+
+- Added comprehensive unit tests for automatic prompt firing behavior
+- Tests cover single and multiple PR failures with feature enabled/disabled
+- Tests verify correct PR numbers and URLs are passed to investigation chat
+
 ## [0.0.13] - 2026-06-30
 
 ### Added
-- **Copilot-powered failure investigation** — new `prStatusMonitor.showInvestigateOnFailure` setting (default: `false`). When enabled, PR failure notifications show an "Investigate" button that opens Copilot Chat with a pre-filled prompt explaining the failure context.
 
+- **Copilot-powered failure investigation** — new `prStatusMonitor.showInvestigateOnFailure` setting (default: `false`). When enabled, PR failure notifications show an "Investigate" button that opens Copilot Chat with a pre-filled prompt explaining the failure context.
 
 ## [0.0.12] - 2026-06-25
 
