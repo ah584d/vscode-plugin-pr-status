@@ -3,7 +3,7 @@
 > **Stop refreshing GitHub.** Get real-time pull request CI status, smart notifications, and one-click navigation — all from your VS Code status bar.
 
 [![Visual Studio Code](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](https://code.visualstudio.com/)
-[![Version](https://img.shields.io/badge/version-0.0.13-brightgreen.svg)]()
+[![Version](https://img.shields.io/badge/version-0.0.14-brightgreen.svg)]()
 [![GitHub License](https://img.shields.io/badge/license-MIT-lightgrey.svg)]()
 
 ---
