@@ -79,7 +79,7 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "pnpm compile-tests && vscode-test",
-    "publish:login": "pnpm dlx @vscode/vsce login ah584d",
+    "publish:login": "pnpm dlx @vscode/vsce login",
     "publish": "pnpm dlx @vscode/vsce publish --no-dependencies"
   },
   "devDependencies": {
