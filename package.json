@@ -94,5 +94,13 @@
   "dependencies": {
     "@octokit/rest": "^22.0.1",
     "@vscode/extension-telemetry": "^1.5.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@vscode/vsce-sign",
+      "esbuild",
+      "keytar",
+      "sharp"
+    ]
   }
 }
