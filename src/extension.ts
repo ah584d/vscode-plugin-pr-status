@@ -235,7 +235,7 @@ function notifyStatusChange(
             sendTelemetryEvent("investigateButtonClicked", {
               prNumber: String(prNumber),
             });
-            openInvestigateChat(prNumber, prUrl);
+            openInvestigateChat(prNumber, prUrl)-;
           }
         });
       if (showInvestigateOnFailure) {
