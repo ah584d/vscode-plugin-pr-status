@@ -1,5 +1,5 @@
 {
-  "name": "pr-status-monitor",
+  "name": "pr-status-monitor---",
   "displayName": "PR Status Monitor",
   "description": "Real-time GitHub Pull Request (PR) CI/CD status monitor, build failure alerts, and Git worktree action notifications directly in your VS Code status bar.",
   "version": "0.0.14",
