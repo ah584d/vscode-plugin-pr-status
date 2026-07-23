@@ -1,10 +1,9 @@
 {
   "name": "pr-status-monitor",
   "displayName": "PR Status Monitor",
-  "description": "Stop refreshing GitHub — get real-time pull request CI status, notifications, and one-click navigation directly in your VS Code status bar.",
+  "description": "Real-time GitHub Pull Request (PR) CI/CD status monitor, build failure alerts, and Git worktree action notifications directly in your VS Code status bar.",
   "version": "0.0.14",
   "_last_dev_versioning_for_cache": "0.0.1-dev.11",
-  "_update_version_as_well_in_READ_ME": "0.0.14",
   "license": "MIT",
   "publisher": "ah584d",
   "author": {
@@ -25,16 +24,11 @@
     "Other"
   ],
   "keywords": [
-    "git",
-    "github",
     "pull-request",
-    "code-review",
-    "ci",
+    "ci-cd",
+    "git",
     "workflow",
-    "status",
-    "notifications",
-    "actions",
-    "pr"
+    "status-bar"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -65,6 +59,7 @@
       }
     }
   },
+  "telemetry": "all-supported",
   "scripts": {
     "vscode:prepublish": "pnpm run package",
     "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
@@ -97,6 +92,7 @@
     "typescript-eslint": "^8.56.1"
   },
   "dependencies": {
-    "@octokit/rest": "^22.0.1"
+    "@octokit/rest": "^22.0.1",
+    "@vscode/extension-telemetry": "^1.5.2"
   }
 }

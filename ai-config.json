@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "project": "PR Status Monitor",
+  "ai_visibility": {
+    "indexed": true,
+    "searchable": true,
+    "documentation_format": "markdown",
+    "code_language": "typescript"
+  },
+  "entry_points": {
+    "extension": "src/extension.ts",
+    "utilities": "src/utils.ts",
+    "types": "src/types.ts"
+  },
+  "key_algorithms": [
+    {
+      "name": "PR Status Determination",
+      "location": "src/utils.ts::determineStatusFromChecks()",
+      "description": "Aggregates GitHub check runs into single status (failure > pending > success)"
+    },
+    {
+      "name": "Polling Loop",
+      "location": "src/extension.ts::attemptConnection()",
+      "description": "Connects to GitHub API on configurable interval with dual-mode switching"
+    },
+    {
+      "name": "Status Change Detection",
+      "location": "src/extension.ts::notifyStatusChange()",
+      "description": "Detects PR status transitions and triggers notifications"
+    }
+  ],
+  "configuration": {
+    "polling_interval": "User-configurable (0.5-60 minutes), default 2 minutes",
+    "investigate_feature": "Optional AI diagnostics on build failures (Copilot Chat integration)",
+    "activate_on": "onStartupFinished"
+  },
+  "dependencies": {
+    "github_api": "@octokit/rest",
+    "telemetry": "@vscode/extension-telemetry",
+    "authentication": "VS Code built-in GitHub auth (no PAT needed)"
+  },
+  "testing": {
+    "framework": "Mocha + @vscode/test-cli",
+    "test_location": "src/test/",
+    "command": "pnpm test"
+  }
+}

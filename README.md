@@ -3,8 +3,10 @@
 > **Stop refreshing GitHub.** Get real-time pull request CI status, smart notifications, and one-click navigation — all from your VS Code status bar.
 
 [![Visual Studio Code](https://img.shields.io/badge/VS%20Code-Extension-blue.svg)](https://code.visualstudio.com/)
-[![Version](https://img.shields.io/badge/version-0.0.14-brightgreen.svg)]()
-[![GitHub License](https://img.shields.io/badge/license-MIT-lightgrey.svg)]()
+![Downloads](https://vsmarketplacebadges.dev/downloads-short/ah584d.pr-status-monitor.svg)
+![Version](https://vsmarketplacebadges.dev/version-short/ah584d.pr-status-monitor.svg)
+![GitHub License](https://img.shields.io/badge/license-MIT-lightgrey.svg)
+![AI-Friendly](https://img.shields.io/badge/ai--friendly-yes-brightgreen)
 
 ---
 
@@ -31,7 +33,6 @@
    ![Status Bar](assets/status2.jpg)
 
    _(3 open PRs: 1 passing, 1 failed, 1 pending)_
-
 
 ---
 
@@ -84,9 +85,9 @@ Fast 10-second retry polling during startup and after connection loss — you're
 
 ## ⚙️ Configuration
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `prStatusMonitor.pollingInterval` | number | `2` | How often to check PR status (in minutes). Min: 0.5 (30s), Max: 60. |
+| Setting                                    | Type    | Default | Description                                                                                                                                                                 |
+| ------------------------------------------ | ------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `prStatusMonitor.pollingInterval`          | number  | `2`     | How often to check PR status (in minutes). Min: 0.5 (30s), Max: 60.                                                                                                         |
 | `prStatusMonitor.showInvestigateOnFailure` | boolean | `false` | When enabled, automatically opens Copilot Chat with a pre-filled investigation prompt when a PR build fails. Also adds an "Investigate" button to the failure notification. |
 
 To change these settings:
@@ -108,20 +109,20 @@ Or add to your `settings.json`:
 
 ## 📋 Requirements
 
-| Requirement | Details |
-|-------------|---------|
-| VS Code | `1.103.0` or newer |
-| GitHub | Signed in via VS Code's built-in GitHub auth |
+| Requirement | Details                                      |
+| ----------- | -------------------------------------------- |
+| VS Code     | `1.103.0` or newer                           |
+| GitHub      | Signed in via VS Code's built-in GitHub auth |
 
 ---
 
 ## 🤔 Why PR Status Monitor?
 
-| Without PR Status Monitor | With PR Status Monitor |
-|--------------------------|----------------------|
-| Alt-Tab to browser, navigate to GitHub, find your PR, check the status... repeat every 5 minutes | Glance at your status bar — done |
-| Miss a failed check and waste 30 minutes waiting | Get notified instantly when your PR fails or passes |
-| Forget which repo had the pending PR | All PRs from all open repos aggregated in one place |
+| Without PR Status Monitor                                                                        | With PR Status Monitor                              |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Alt-Tab to browser, navigate to GitHub, find your PR, check the status... repeat every 5 minutes | Glance at your status bar — done                    |
+| Miss a failed check and waste 30 minutes waiting                                                 | Get notified instantly when your PR fails or passes |
+| Forget which repo had the pending PR                                                             | All PRs from all open repos aggregated in one place |
 
 ---
 

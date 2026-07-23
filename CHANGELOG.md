@@ -4,6 +4,18 @@ All notable changes to the "pr-status-monitor" extension will be documented in t
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.15] - 202x-xx-xx
+
+### Added
+
+-
+
+### Changed
+
+- Update README
+
+### Tests
+
 ## [0.0.14] - 2026-07-01
 
 ### Added

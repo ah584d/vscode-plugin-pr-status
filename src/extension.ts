@@ -23,6 +23,14 @@ import {
   formatPRTable,
 } from "./utils";
 import { openInvestigateChat } from "./notifications";
+import {
+  initTelemetry,
+  sendTelemetryEvent,
+  disposeTelemetry,
+  trackPROpened,
+  trackQuickPickUsage,
+  trackInvestigateUsage,
+} from "./telemetry";
 
 const FAST_POLLING_MS = 10 * 1000; // 10 seconds for initial connection or reconnection
 
@@ -39,6 +47,10 @@ let normalPollingMs = 120000; // Default 2 minutes
 let showInvestigateOnFailure = false;
 
 export async function activate(context: vscode.ExtensionContext) {
+  // 0. Initialize telemetry (respects user privacy settings)
+  // This also sends the extensionActivated event with system info
+  initTelemetry(context);
+
   // 1. Create the output channel for logging
   outputChannel = vscode.window.createOutputChannel("PR Status Monitor");
   context.subscriptions.push(outputChannel);
@@ -61,6 +73,8 @@ export async function activate(context: vscode.ExtensionContext) {
   const openCommand = vscode.commands.registerCommand(
     "pr-status-monitor.openPrInBrowser",
     async () => {
+      sendTelemetryEvent("commandExecuted", { commandName: "openPrInBrowser" });
+
       if (allPRs.length === 0) {
         vscode.window.showInformationMessage("No active PRs found.");
         return;
@@ -68,12 +82,14 @@ export async function activate(context: vscode.ExtensionContext) {
 
       if (allPRs.length === 1) {
         // If only one PR, open it directly
+        trackPROpened();
         vscode.env.openExternal(vscode.Uri.parse(allPRs[0].url));
         return;
       }
 
       // Show QuickPick menu for multiple PRs
       const items = buildQuickPickItems(allPRs);
+      trackQuickPickUsage();
 
       const selected = await vscode.window.showQuickPick(items, {
         placeHolder: "Select a PR to open in browser",
@@ -81,6 +97,8 @@ export async function activate(context: vscode.ExtensionContext) {
       });
 
       if (selected) {
+        trackPROpened();
+        sendTelemetryEvent("prOpened", { prUrl: selected.url });
         vscode.env.openExternal(vscode.Uri.parse(selected.url));
       }
     },
@@ -112,6 +130,10 @@ export async function activate(context: vscode.ExtensionContext) {
         `Polling interval set to ${pollingMinutes} minute(s) (${normalPollingMs}ms)`,
       );
 
+      sendTelemetryEvent("githubAuthSuccess", {
+        pollingIntervalMinutes: String(pollingMinutes),
+      });
+
       // Start connection attempts
       await attemptConnection();
 
@@ -121,12 +143,17 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     } else {
       setOfflineStatus("No GitHub Session");
+      sendTelemetryEvent("githubAuthFailed", { reason: "noSession" });
     }
   } catch (error) {
     vscode.window.showErrorMessage(
       "PR Monitor: Failed to authenticate with GitHub.",
     );
     setOfflineStatus("Auth Failed");
+    sendTelemetryEvent("githubAuthFailed", {
+      reason: "authException",
+      errorMessage: String(error),
+    });
   }
 }
 
@@ -141,6 +168,7 @@ async function attemptConnection() {
   if (connected && !wasConnected) {
     // Just connected! Switch to normal polling interval
     isConnected = true;
+    sendTelemetryEvent("connectionEstablished");
     outputChannel.appendLine(
       `✅ Connected to GitHub! Switching to normal polling (${normalPollingMs / 1000}s)`,
     );
@@ -151,6 +179,7 @@ async function attemptConnection() {
   } else if (!connected && wasConnected) {
     // Lost connection! Switch back to fast polling to reconnect quickly
     isConnected = false;
+    sendTelemetryEvent("connectionLost");
     outputChannel.appendLine(
       `⚠️ Connection lost! Switching to fast polling (${FAST_POLLING_MS / 1000}s) to reconnect`,
     );
@@ -173,6 +202,11 @@ function notifyStatusChange(
 ) {
   if (previousStatus === "🟠") {
     if (currentStatus === "🟢") {
+      sendTelemetryEvent("prStatusChanged", {
+        previousStatus: "pending",
+        newStatus: "success",
+        prNumber: String(prNumber),
+      });
       const message = buildNotificationMessage("success", repoPrefix, prNumber);
       vscode.window
         .showInformationMessage(message, "View PR")
@@ -182,6 +216,11 @@ function notifyStatusChange(
           }
         });
     } else if (currentStatus === "🔴") {
+      sendTelemetryEvent("prStatusChanged", {
+        previousStatus: "pending",
+        newStatus: "failure",
+        prNumber: String(prNumber),
+      });
       const message = buildNotificationMessage("failure", repoPrefix, prNumber);
       const buttons = showInvestigateOnFailure
         ? ["View PR", "Investigate"]
@@ -192,10 +231,15 @@ function notifyStatusChange(
           if (selection === "View PR") {
             vscode.env.openExternal(vscode.Uri.parse(prUrl));
           } else if (selection === "Investigate") {
+            trackInvestigateUsage();
+            sendTelemetryEvent("investigateButtonClicked", {
+              prNumber: String(prNumber),
+            });
             openInvestigateChat(prNumber, prUrl);
           }
         });
       if (showInvestigateOnFailure) {
+        trackInvestigateUsage();
         openInvestigateChat(prNumber, prUrl);
       }
     }
@@ -351,7 +395,6 @@ async function fetchAndDisplayPRs(
 
   // Display PR table in output channel
   outputChannel.appendLine("\n" + formatPRTable(prTableData) + "\n");
-
   // Update status bar
   updateStatusBar(totalPRs, counts, tooltipLines);
   return true;
@@ -430,6 +473,10 @@ async function updatePRStatus(
     return await fetchAndDisplayPRs(octokit, uniqueRepoIds, user.login);
   } catch (error) {
     outputChannel.appendLine(`❌ Error: ${error}`);
+    sendTelemetryEvent("apiError", {
+      errorType: error instanceof Error ? error.name : "unknown",
+      errorMessage: error instanceof Error ? error.message : String(error),
+    });
     if (!isInitialConnection) {
       setOfflineStatus("API Error");
       outputChannel.show(true); // Show output channel on error
@@ -454,4 +501,5 @@ export function deactivate() {
     outputChannel.appendLine("PR Status Monitor deactivated");
     outputChannel.dispose();
   }
+  disposeTelemetry();
 }

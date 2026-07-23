@@ -1,14 +1,31 @@
 {
   "schema_version": "v1",
   "name": "PR Status Monitor",
-  "description": "VS Code extension that displays real-time GitHub pull request CI status, notifications, and one-click navigation in the editor's status bar.",
+  "description": "VS Code extension that displays real-time GitHub pull request CI status, automated build diagnostics, and one-click PR navigation in the editor's status bar.",
+  "version": "0.0.15",
   "auth": {
-    "type": "none"
+    "type": "github",
+    "required": true
   },
   "api": {
-    "type": "none"
+    "type": "rest",
+    "endpoints": [
+      {
+        "name": "checkStatus",
+        "description": "Get current PR status summary from status bar"
+      }
+    ]
   },
+  "capabilities": [
+    "github-pr-monitoring",
+    "ci-cd-status-tracking",
+    "build-failure-diagnostics",
+    "real-time-notifications",
+    "multi-repo-support"
+  ],
   "logo_url": "https://raw.githubusercontent.com/ah584d/vscode-plugin-pr-status/main/assets/icon.png",
   "contact_email": "gibor7@gmail.com",
-  "legal_info_url": "https://github.com/ah584d/vscode-plugin-pr-status/blob/main/LICENSE"
+  "legal_info_url": "https://github.com/ah584d/vscode-plugin-pr-status/blob/main/LICENSE",
+  "repository": "https://github.com/ah584d/vscode-plugin-pr-status",
+  "documentation": "https://github.com/ah584d/vscode-plugin-pr-status/blob/main/README.md"
 }
