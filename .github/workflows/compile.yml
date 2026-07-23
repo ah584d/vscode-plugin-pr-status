@@ -1,0 +1,36 @@
+name: PR Build Verification
+
+# This forces the workflow to execute ONLY on pull requests
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-and-compile:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Securely clones your PR code onto the GitHub runner
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      # Step 2: Installs pnpm globally on the clean runner instance
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      # Step 3: Installs Node.js and integrates native pnpm dependency caching
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      # Step 4: Installs exact dependencies mapping to your pnpm-lock.yaml
+      - name: Install dependencies (Frozen Lockfile)
+        run: pnpm i --frozen-lockfile
+
+      # Step 5: Executes your custom compilation script
+      - name: Run compile script
+        run: pnpm run compile
