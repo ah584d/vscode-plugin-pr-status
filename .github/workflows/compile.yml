@@ -12,20 +12,19 @@ jobs:
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        # Using the absolute latest commit sha or v5+ tag bypasses the Node 20 runtime warning
-        uses: pnpm/action-setup@v4
-        with:
-          version: latest
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'pnpm'
 
-      - name: Install dependencies (Frozen Lockfile)
-        run: pnpm i --frozen-lockfile --config.strict-dep-builds=false
+      - name: Setup pnpm and Install Dependencies
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+          # This executes the install natively inside the action wrapper
+          run_install: |
+            - recursive: true
+              args: [--frozen-lockfile, --config.strict-dep-builds=false]
 
       - name: Run compile script
         run: pnpm run compile
