@@ -4,17 +4,23 @@ All notable changes to the "pr-status-monitor" extension will be documented in t
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.0.15] - 202x-xx-xx
+## [0.0.15] - 2026-07-27
 
 ### Added
 
--
+- **Telemetry support** — Added Application Insights telemetry tracking to understand feature usage and improve the extension (respects VS Code's telemetry settings)
+- **GitHub Actions workflow** — Automated issue summarization using AI for new issues
+- **Enhanced AI integration** — New documentation and configuration files (ai-config.json, .instructions.md) for better GitHub Copilot support
+- **Visual demonstration** — Added animated GIF showing extension features in action
 
 ### Changed
 
-- Update README
+- Update README with better documentation and usage examples
+- Improved project structure with comprehensive AI-friendly documentation
 
 ### Tests
+
+- Added additional unit tests for better code coverage
 
 ## [0.0.14] - 2026-07-01
 
