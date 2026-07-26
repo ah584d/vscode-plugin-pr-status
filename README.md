@@ -18,7 +18,8 @@
      Tools: LICEcap, Gifox, or VS Code's built-in screen recorder.
      Save as assets/demo.gif and uncomment the line below:
 -->
-<!-- ![PR Status Monitor in action](assets/demo.gif) -->
+
+![PR Status Monitor in action](assets/gif1.gif)
 
 ## 🚀 Quick Start — 3 Steps
 
