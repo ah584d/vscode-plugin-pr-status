@@ -4,6 +4,20 @@ All notable changes to the "pr-status-monitor" extension will be documented in t
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.0.16] - 2026-10-01
+
+### Added
+
+- **Multi-account GitHub support** — new `PR Monitor: Switch GitHub Account` command (Command Palette) lets you pick which signed-in GitHub session the extension should use. Essential when you have both a personal and an enterprise/EMU account signed into VS Code.
+- **Verbose logging option** — new `prStatusMonitor.verboseLogging` setting (default `false`) to show diagnostic lines (per-repo search queries, authenticated user, token scopes) in the output channel. Toggle takes effect immediately without a reload.
+- Startup log now prints the active GitHub account label (`Using GitHub account: <label>`) so the signed-in identity is always visible.
+- SSH host aliases for enterprise/SSO accounts (e.g. `git@github.com-work:owner/repo.git`) are now recognized when extracting repository IDs from git remotes.
+
+### Changed
+
+- PR search now runs **one query per repository** instead of a single combined query. A failing or inaccessible repo (SSO not authorized, no permission, wrong host) is now logged and skipped instead of aborting the entire search.
+- Error logs for failed per-repo searches now include the HTTP status, the `x-github-sso` header (with the exact authorization URL) when present, and a hint pointing to <https://github.com/settings/applications> for OAuth-app authorization.
+
 ## [0.0.15] - 2026-07-27
 
 ### Added

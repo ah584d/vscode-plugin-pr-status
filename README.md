@@ -82,6 +82,14 @@ Hover over the status bar item to see an organized breakdown of all your open PR
 
 Fast 10-second retry polling during startup and after connection loss — you're always up to date.
 
+### 👥 Multi-Account Support (Personal + Enterprise)
+
+Signed in to VS Code with more than one GitHub account — a personal one and an enterprise/EMU one, for example? PR Status Monitor lets you pick which account it uses, independently of the account other VS Code features default to.
+
+Open the Command Palette and run **`PR Monitor: Switch GitHub Account`**, then select the account whose PRs you want to track. The choice is remembered per-extension, and running the command again lets you switch back at any time.
+
+![Switch GitHub Account](assets/switch_account.jpg)
+
 ---
 
 ## ⚙️ Configuration
@@ -90,6 +98,7 @@ Fast 10-second retry polling during startup and after connection loss — you're
 | ------------------------------------------ | ------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `prStatusMonitor.pollingInterval`          | number  | `2`     | How often to check PR status (in minutes). Min: 0.5 (30s), Max: 60.                                                                                                         |
 | `prStatusMonitor.showInvestigateOnFailure` | boolean | `false` | When enabled, automatically opens Copilot Chat with a pre-filled investigation prompt when a PR build fails. Also adds an "Investigate" button to the failure notification. |
+| `prStatusMonitor.verboseLogging`           | boolean | `false` | Write extra diagnostic lines to the output channel (per-repo search queries, authenticated user, token scopes). Useful when troubleshooting authentication or missing PRs.  |
 
 To change these settings:
 
@@ -102,7 +111,8 @@ Or add to your `settings.json`:
 ```json
 {
   "prStatusMonitor.pollingInterval": 0.5,
-  "prStatusMonitor.showInvestigateOnFailure": true
+  "prStatusMonitor.showInvestigateOnFailure": true,
+  "prStatusMonitor.verboseLogging": false
 }
 ```
 

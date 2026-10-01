@@ -17,7 +17,6 @@ import {
   extractRepoInfo,
   createPRKey,
   getRepoPrefix,
-  buildGitHubSearchQuery,
   buildQuickPickItems,
   buildNotificationMessage,
   formatPRTable,
@@ -45,6 +44,13 @@ let isConnected = false;
 let octokitInstance: OctokitInstance | null = null;
 let normalPollingMs = 120000; // Default 2 minutes
 let showInvestigateOnFailure = false;
+let verboseLogging = false;
+
+function logVerbose(message: string) {
+  if (verboseLogging) {
+    outputChannel.appendLine(message);
+  }
+}
 
 export async function activate(context: vscode.ExtensionContext) {
   // 0. Initialize telemetry (respects user privacy settings)
@@ -106,6 +112,45 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(openCommand);
   myStatusBarItem.command = "pr-status-monitor.openPrInBrowser";
 
+  const switchAccountCommand = vscode.commands.registerCommand(
+    "pr-status-monitor.switchAccount",
+    async () => {
+      try {
+        // clearSessionPreference forces VS Code to re-prompt the account picker
+        // when more than one GitHub session is signed in.
+        const newSession = await vscode.authentication.getSession(
+          "github",
+          ["repo"],
+          { clearSessionPreference: true, createIfNone: true },
+        );
+        if (!newSession) {
+          vscode.window.showWarningMessage(
+            "PR Monitor: No GitHub session was selected.",
+          );
+          return;
+        }
+        const { Octokit } = await import("@octokit/rest");
+        octokitInstance = new Octokit({
+          auth: newSession.accessToken,
+        }) as OctokitInstance;
+        previousPRStatuses.clear();
+        outputChannel.appendLine(
+          `Switched GitHub account to: ${newSession.account.label}`,
+        );
+        vscode.window.showInformationMessage(
+          `PR Monitor: now using GitHub account "${newSession.account.label}".`,
+        );
+        await attemptConnection();
+      } catch (error) {
+        outputChannel.appendLine(`❌ Switch account failed: ${error}`);
+        vscode.window.showErrorMessage(
+          "PR Monitor: Failed to switch GitHub account.",
+        );
+      }
+    },
+  );
+  context.subscriptions.push(switchAccountCommand);
+
   try {
     const { Octokit } = await import("@octokit/rest");
     const session = await vscode.authentication.getSession("github", ["repo"], {
@@ -113,6 +158,10 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     if (session) {
+      outputChannel.appendLine(
+        `Using GitHub account: ${session.account.label} ` +
+          `(run "PR Monitor: Switch GitHub Account" to change)`,
+      );
       octokitInstance = new Octokit({
         auth: session.accessToken,
       }) as OctokitInstance;
@@ -125,9 +174,24 @@ export async function activate(context: vscode.ExtensionContext) {
         "showInvestigateOnFailure",
         false,
       );
+      verboseLogging = config.get<boolean>("verboseLogging", false);
 
-      outputChannel.appendLine(
+      logVerbose(
         `Polling interval set to ${pollingMinutes} minute(s) (${normalPollingMs}ms)`,
+      );
+
+      // Keep verboseLogging in sync when the user toggles it at runtime.
+      context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration((e) => {
+          if (e.affectsConfiguration("prStatusMonitor.verboseLogging")) {
+            verboseLogging = vscode.workspace
+              .getConfiguration("prStatusMonitor")
+              .get<boolean>("verboseLogging", false);
+            outputChannel.appendLine(
+              `Verbose logging ${verboseLogging ? "enabled" : "disabled"}`,
+            );
+          }
+        }),
       );
 
       sendTelemetryEvent("githubAuthSuccess", {
@@ -330,16 +394,68 @@ async function fetchAndDisplayPRs(
   uniqueRepoIds: Set<string>,
   username: string,
 ): Promise<boolean> {
-  const searchQuery = buildGitHubSearchQuery(uniqueRepoIds, username);
+  // Query each repo separately so one inaccessible repo (SSO not authorized,
+  // private/no permission, wrong host) doesn't abort the whole search.
+  const allMyPrs: GitHubPullRequest[] = [];
+  const skippedRepos: string[] = [];
 
-  outputChannel.appendLine(`Searching for PRs with query: ${searchQuery}`);
+  for (const repoId of uniqueRepoIds) {
+    const searchQuery = `is:pr is:open author:${username} repo:${repoId}`;
+    logVerbose(`Searching for PRs with query: ${searchQuery}`);
 
-  const { data: searchData } = await octokit.rest.search.issuesAndPullRequests({
-    q: searchQuery,
-    per_page: 50,
-  });
+    try {
+      const { data: searchData } =
+        await octokit.rest.search.issuesAndPullRequests({
+          q: searchQuery,
+          per_page: 50,
+        });
+      allMyPrs.push(...(searchData.items as GitHubPullRequest[]));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      skippedRepos.push(repoId);
+      // GitHub returns an `x-github-sso` header when a token lacks SSO
+      // authorization; it includes the exact URL to authorize.
+      const headers = (
+        error as { response?: { headers?: Record<string, string> } }
+      )?.response?.headers;
+      const ssoHeader = headers?.["x-github-sso"];
+      const status = (error as { status?: number })?.status;
+      // 422 with this exact message means the token's account can't see this
+      // repo (SSO not authorized, OAuth app not approved, or wrong account).
+      const isNotVisible =
+        status === 422 && /cannot be searched/i.test(message);
+      if (isNotVisible && !ssoHeader) {
+        outputChannel.appendLine(
+          `⚠️  No access to ${repoId} with GitHub account "${username}". ` +
+            `If this repo belongs to a different account, ` +
+            `run "PR Monitor: Switch GitHub Account".`,
+        );
+      } else {
+        outputChannel.appendLine(
+          `⚠️  Skipping repo ${repoId}: [${status}] ${message}`,
+        );
+      }
+      if (ssoHeader) {
+        outputChannel.appendLine(`   → SSO required: ${ssoHeader}`);
+      }
+      if (headers?.["x-oauth-scopes"] !== undefined) {
+        logVerbose(
+          `   → Token scopes: "${headers["x-oauth-scopes"]}" ` +
+            `(accepted: "${headers["x-accepted-oauth-scopes"] ?? ""}")`,
+        );
+      }
+      logVerbose(`   → Raw error for ${repoId}: ${message}`);
+    }
+  }
 
-  const allMyPrs = searchData.items;
+  if (skippedRepos.length > 0) {
+    outputChannel.appendLine(
+      `Skipped ${skippedRepos.length} repo(s): ${skippedRepos.join(", ")}. ` +
+        `If this is an OAuth/SSO issue, visit https://github.com/settings/applications, ` +
+        `open the "GitHub for VSCode" entry, and authorize SSO for each org.`,
+    );
+  }
+
   const totalPRs = allMyPrs.length;
 
   outputChannel.appendLine(`Found ${totalPRs} PRs for user ${username}`);
@@ -470,6 +586,7 @@ async function updatePRStatus(
 
   try {
     const { data: user } = await octokit.rest.users.getAuthenticated();
+    logVerbose(`Authenticated as GitHub user: ${user.login}`);
     return await fetchAndDisplayPRs(octokit, uniqueRepoIds, user.login);
   } catch (error) {
     outputChannel.appendLine(`❌ Error: ${error}`);

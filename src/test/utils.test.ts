@@ -59,6 +59,30 @@ suite("Utility Functions Tests", () => {
       assert.ok(result.has("owner/repo"));
     });
 
+    test("Should extract repo ID from SSH URL with host alias", () => {
+      // Users with multiple GitHub accounts (e.g. personal + enterprise/SSO)
+      // often add ~/.ssh/config entries like `Host github.com-work` and clone
+      // with `git@github.com-work:owner/repo.git`.
+      const repos: GitRepository[] = [
+        {
+          state: {
+            remotes: [
+              {
+                name: "origin",
+                fetchUrl: "git@github.com-work:owner/repo.git",
+                pushUrl: "git@github.com-work:owner/repo.git",
+                isReadOnly: false,
+              },
+            ],
+          },
+        },
+      ];
+
+      const result = extractGitHubRepoIds(repos);
+      assert.strictEqual(result.size, 1);
+      assert.ok(result.has("owner/repo"));
+    });
+
     test("Should extract repo ID from URL without .git", () => {
       const repos: GitRepository[] = [
         {
