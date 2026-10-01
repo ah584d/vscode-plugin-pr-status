@@ -85,7 +85,9 @@
     "lint": "eslint src",
     "test": "pnpm compile-tests && vscode-test",
     "publish:login": "pnpm dlx @vscode/vsce login",
-    "publish_to_marketplace": "pnpm dlx @vscode/vsce publish --no-dependencies"
+    "publish_to_marketplace": "pnpm dlx @vscode/vsce publish --no-dependencies",
+    "post_publish_tag_1": "git tag -a v0.0.16 -m \"Release 0.0.16 — multi-account support, verbose logging, per-repo search\"",
+    "post_publish_tag_2": "git push origin v0.0.16"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
