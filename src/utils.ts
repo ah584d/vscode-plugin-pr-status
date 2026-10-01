@@ -14,8 +14,10 @@ export function extractGitHubRepoIds(
       if (!remote.fetchUrl) {
         continue;
       }
+      // Also accept SSH host aliases like `github.com-work` used in ~/.ssh/config
+      // for enterprise/SSO accounts (e.g. `git@github.com-work:owner/repo.git`).
       const match = remote.fetchUrl.match(
-        /github\.com[:/](.+)\/(.+?)(\.git)?$/,
+        /github\.com(?:-[^:/]+)?[:/](.+)\/(.+?)(\.git)?$/,
       );
       if (match) {
         uniqueRepoIds.add(`${match[1]}/${match[2]}`);

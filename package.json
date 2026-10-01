@@ -2,8 +2,8 @@
   "name": "pr-status-monitor",
   "displayName": "PR Status Monitor",
   "description": "Real-time GitHub Pull Request (PR) CI/CD status monitor, build failure alerts, and Git worktree action notifications directly in your VS Code status bar.",
-  "version": "0.0.15",
-  "_last_dev_versioning_for_cache": "0.0.1-dev.12",
+  "version": "0.0.16",
+  "_last_dev_versioning_for_cache": "0.0.1-dev.19",
   "license": "MIT",
   "publisher": "ah584d",
   "author": {
@@ -39,6 +39,10 @@
       {
         "command": "pr-status-monitor.openPrInBrowser",
         "title": "Open PR in Browser"
+      },
+      {
+        "command": "pr-status-monitor.switchAccount",
+        "title": "PR Monitor: Switch GitHub Account"
       }
     ],
     "configuration": {
@@ -55,12 +59,18 @@
           "type": "boolean",
           "default": false,
           "description": "Show an 'Investigate' button in the failure notification that opens Copilot Chat to explain the build failure"
+        },
+        "prStatusMonitor.verboseLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Write extra diagnostic lines to the PR Status Monitor output channel (search queries, authenticated user, token scopes). Useful when troubleshooting GitHub authentication or missing PRs."
         }
       }
     }
   },
   "telemetry": "all-supported",
   "scripts": {
+    "ci": "pnpm install --frozen-lockfile --loglevel info",
     "vscode:prepublish": "pnpm run package",
     "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",
@@ -75,7 +85,9 @@
     "lint": "eslint src",
     "test": "pnpm compile-tests && vscode-test",
     "publish:login": "pnpm dlx @vscode/vsce login",
-    "publish": "pnpm dlx @vscode/vsce publish --no-dependencies"
+    "publish_to_marketplace": "pnpm dlx @vscode/vsce publish --no-dependencies",
+    "post_publish_tag_1": "git tag -a v0.0.16 -m \"Release 0.0.16 — multi-account support, verbose logging, per-repo search\"",
+    "post_publish_tag_2": "git push origin v0.0.16"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

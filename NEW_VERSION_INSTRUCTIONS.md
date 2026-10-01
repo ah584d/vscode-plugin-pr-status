@@ -8,7 +8,7 @@
   - update the followings fields in package.json : "version", "\_last_dev_versioning_for_cache"
   - update version filed in file .well-known/ai-plugin.json
   - `publish:login` if I'm not yet logged in
-  - `publish`
+  - `publish_to_marketplace`
 
 ## Badge for README
 

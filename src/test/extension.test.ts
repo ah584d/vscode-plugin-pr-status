@@ -302,9 +302,11 @@ suite("PR Status Monitor Extension Tests", () => {
   });
 
   suite("GitHub URL Matching Tests", () => {
+    const GITHUB_URL_RE = /github\.com(?:-[^:/]+)?[:/](.+)\/(.+?)(\.git)?$/;
+
     test("Should match HTTPS GitHub URLs", () => {
       const url = "https://github.com/owner/repo.git";
-      const match = url.match(/github\.com[:/](.+)\/(.+?)(\.git)?$/);
+      const match = url.match(GITHUB_URL_RE);
 
       assert.ok(match, "Should match HTTPS URL");
       assert.strictEqual(match![1], "owner", "Should extract owner");
@@ -313,16 +315,25 @@ suite("PR Status Monitor Extension Tests", () => {
 
     test("Should match SSH GitHub URLs", () => {
       const url = "git@github.com:owner/repo.git";
-      const match = url.match(/github\.com[:/](.+)\/(.+?)(\.git)?$/);
+      const match = url.match(GITHUB_URL_RE);
 
       assert.ok(match, "Should match SSH URL");
       assert.strictEqual(match![1], "owner", "Should extract owner");
       assert.strictEqual(match![2], "repo", "Should extract repo");
     });
 
+    test("Should match SSH URLs with host alias (e.g. github.com-work)", () => {
+      const url = "git@github.com-work:owner/repo.git";
+      const match = url.match(GITHUB_URL_RE);
+
+      assert.ok(match, "Should match SSH URL with host alias");
+      assert.strictEqual(match![1], "owner", "Should extract owner");
+      assert.strictEqual(match![2], "repo", "Should extract repo");
+    });
+
     test("Should match URLs without .git extension", () => {
       const url = "https://github.com/owner/repo";
-      const match = url.match(/github\.com[:/](.+)\/(.+?)(\.git)?$/);
+      const match = url.match(GITHUB_URL_RE);
 
       assert.ok(match, "Should match URL without .git");
       assert.strictEqual(match![1], "owner", "Should extract owner");
@@ -331,7 +342,7 @@ suite("PR Status Monitor Extension Tests", () => {
 
     test("Should not match non-GitHub URLs", () => {
       const url = "https://gitlab.com/owner/repo.git";
-      const match = url.match(/github\.com[:/](.+)\/(.+?)(\.git)?$/);
+      const match = url.match(GITHUB_URL_RE);
 
       assert.strictEqual(match, null, "Should not match non-GitHub URL");
     });
