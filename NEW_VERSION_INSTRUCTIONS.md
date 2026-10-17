@@ -1,14 +1,17 @@
 ## to debug and install local build
 
+- work only from branch and open PRs
 - in package.json increment last number of "version": "0.0.1-dev.6", the last version of local build is saved in key "_last_dev_versioning_for_cache", we must increment the version of the local build otherwise the cache mechanism of vscode won't reflect the changes done in last build
 
 - run : `pnpm build` and install manually file pr-status-monitor-0.0.1-dev.XX.vsix
 
 - when the code is ready to de deployed to the microsoft marketplace run:
   - update the followings fields in package.json : "version", "\_last_dev_versioning_for_cache"
-  - update version filed in file .well-known/ai-plugin.json
+  - update version field in file .well-known/ai-plugin.json
+  - update file CHANGELOG.md
   - `publish:login` if I'm not yet logged in
   - `publish_to_marketplace`
+  - update last tag with post_publish_tag_1 and post_publish_tag_1 and adapt the correct version number
 
 ## Badge for README
 
